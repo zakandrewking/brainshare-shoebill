@@ -23,10 +23,6 @@ _(Nothing actively in progress.)_
   autocomplete dropdown.** As the user types, surface related prior questions.
   Shipping the keyword half first (no infra: ranks the already-loaded
   submissions client-side); vector/hybrid search deferred to T13.
-- `[T07]` `wip:claude-opus-4.8/ae44@2026-06-11T06:21Z` — **Emulator re-imports deleted accounts on restart.** Each
-  restart re-imports `panda.algae.992@example.com` from
-  `.firebase/emulator-data/auth_export/accounts.json`. Fix the fixture or enable
-  export-on-exit so deletions persist.
 - `[T08]` `unclaimed` — **Local dev pattern agent-browser can drive end-to-end.**
   Signed-in UI is unreachable from agent-browser's headless Chrome:
   `onAuthStateChanged` never fires there (works in a normal browser;
@@ -39,6 +35,7 @@ _(Nothing actively in progress.)_
 
 ## Recently shipped
 
+- [x] `[T07]` Auto-purge non-allowlisted emulator accounts. `scripts/clean-emulator-auth.mjs` deletes any emulator account whose email isn't in `ALLOWED_EMAILS`; `dev.mjs` runs it once the emulator is up, so stray imports (`panda.algae.*`) no longer survive restarts. Verified: injected junk account removed, allowlisted kept.
 - [x] `[T12]` AGENTS.md: added an explicit rule that ALL feedback (corrections,
       reactions, "oops" notes, preferences, offhand remarks) is captured in
       TODOS.md first — not just explicit asks — and reactions to shipped work
