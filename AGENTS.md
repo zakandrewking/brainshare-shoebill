@@ -8,6 +8,13 @@
 - **Always push to `main`.** When work is committed and verified, fast-forward
   (or merge) it onto `main` and push so it deploys to production — no need to
   ask each time. Vercel autodeploys `main`.
+- **Always advance the backlog.** When you finish an item, immediately claim and
+  start the next ready one in `TODOS.md` (top of **Now**, otherwise the first
+  actionable item in **Next**, skipping items another agent has claimed). Keep
+  going on your own — do not stop to ask which item to do next or whether to
+  continue. A fresh user request takes priority over the backlog; capture it,
+  do it, then resume advancing. Only pause for a genuine blocker (a decision
+  that's the user's to make, or missing access/secrets).
 - Never commit secrets, `.env.local`, Firebase service accounts, API keys, or
   production database credentials.
 - Preserve user changes in a dirty worktree. Do not reset or revert unrelated

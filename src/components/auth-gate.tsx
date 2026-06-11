@@ -88,11 +88,11 @@ export function AuthGate() {
           <Image
             src="/robot-csv.png"
             alt="Brainshare robot"
-            width={64}
-            height={64}
+            width={128}
+            height={128}
             unoptimized
             priority
-            className="size-16 [image-rendering:pixelated]"
+            className="size-32 [image-rendering:pixelated]"
           />
           <CardTitle className="text-xl">Brainshare</CardTitle>
         </CardHeader>
