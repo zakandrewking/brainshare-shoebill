@@ -1,10 +1,32 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { createAnswer } from "@/lib/answers";
+import { createAnswer, listAnswers } from "@/lib/answers";
 import { AuthError, requireAuthorizedUser } from "@/lib/auth";
 
 export const runtime = "nodejs";
+
+export async function GET(request: Request) {
+  try {
+    const user = await requireAuthorizedUser(request);
+    const answers = await listAnswers(user.uid);
+
+    return NextResponse.json({ answers });
+  } catch (error) {
+    if (error instanceof AuthError) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: error.status },
+      );
+    }
+
+    console.error(error);
+    return NextResponse.json(
+      { error: "Your submissions could not be loaded." },
+      { status: 500 },
+    );
+  }
+}
 
 const requestSchema = z.object({
   question: z.string().trim().min(3).max(4000),

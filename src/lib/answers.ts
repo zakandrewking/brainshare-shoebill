@@ -59,6 +59,16 @@ export async function createAnswer(
   return serializeAnswer({ ...document, _id: result.insertedId });
 }
 
+export async function listAnswers(userId: string) {
+  const collection = await answersCollection();
+  const documents = await collection
+    .find({ userId })
+    .sort({ updatedAt: -1 })
+    .toArray();
+
+  return documents.map(serializeAnswer);
+}
+
 export async function updateAnswer(
   id: string,
   userId: string,
@@ -91,4 +101,18 @@ export async function updateAnswer(
     segments,
     updatedAt,
   });
+}
+
+export async function deleteAnswer(id: string, userId: string) {
+  if (!ObjectId.isValid(id)) {
+    return false;
+  }
+
+  const collection = await answersCollection();
+  const result = await collection.deleteOne({
+    _id: new ObjectId(id),
+    userId,
+  });
+
+  return result.deletedCount === 1;
 }
