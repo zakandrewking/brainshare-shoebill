@@ -15,7 +15,7 @@ commits) may be reclaimed. On completion, move the item to "Recently shipped".
 
 ## Now
 
-- `[T14]` `wip:claude-opus-4.8/9yf1@2026-06-11T06:29Z` — **Prod GitHub login is
+- `[T14]` `wip:claude-opus-4.8/ae44@2026-06-11T15:28Z` (taken over from 9yf1, user-directed) — **Prod GitHub login is
   still broken.** CODE DONE (pushed): auth-gate now (a) surfaces the real
   Firebase error code instead of a generic message, (b) falls back from
   `signInWithPopup` to `signInWithRedirect` on popup/COOP failures, and (c)
