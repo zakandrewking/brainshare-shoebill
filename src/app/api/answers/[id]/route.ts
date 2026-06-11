@@ -1,13 +1,23 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { deleteAnswer, updateAnswer } from "@/lib/answers";
+import {
+  deleteAnswer,
+  regenerateAnswer,
+  updateAnswer,
+} from "@/lib/answers";
 import { AuthError, requireAuthorizedUser } from "@/lib/auth";
 
 export const runtime = "nodejs";
 
 const requestSchema = z.object({
   currentText: z.string().max(20000),
+});
+
+const regenerateSchema = z.object({
+  aiText: z.string().trim().min(1).max(20000),
+  provider: z.string().trim().min(1).max(100),
+  model: z.string().trim().min(1).max(100),
 });
 
 export async function DELETE(
@@ -35,6 +45,52 @@ export async function DELETE(
     console.error(error);
     return NextResponse.json(
       { error: "The answer could not be deleted." },
+      { status: 500 },
+    );
+  }
+}
+
+export async function PUT(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  try {
+    const user = await requireAuthorizedUser(request);
+    const { aiText, provider, model } = regenerateSchema.parse(
+      await request.json(),
+    );
+    const { id } = await params;
+    const answer = await regenerateAnswer(
+      id,
+      user.uid,
+      aiText,
+      provider,
+      model,
+    );
+
+    if (!answer) {
+      return NextResponse.json({ error: "Answer not found." }, { status: 404 });
+    }
+
+    return NextResponse.json({ answer });
+  } catch (error) {
+    if (error instanceof AuthError) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: error.status },
+      );
+    }
+
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { error: error.issues[0]?.message ?? "Invalid answer." },
+        { status: 400 },
+      );
+    }
+
+    console.error(error);
+    return NextResponse.json(
+      { error: "The answer could not be regenerated." },
       { status: 500 },
     );
   }

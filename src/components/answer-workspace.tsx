@@ -8,6 +8,7 @@ import {
   LoaderCircleIcon,
   LogOutIcon,
   PlusIcon,
+  RefreshCwIcon,
   SaveIcon,
   SendIcon,
   Trash2Icon,
@@ -63,6 +64,7 @@ export function AnswerWorkspace({ user }: { user: User }) {
   const [currentText, setCurrentText] = useState("");
   const [streamingText, setStreamingText] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isRegenerating, setIsRegenerating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isSaved, setIsSaved] = useState(true);
   const [submissions, setSubmissions] = useState<SerializedAnswer[]>([]);
@@ -136,6 +138,35 @@ export function AnswerWorkspace({ user }: { user: User }) {
     }
   }
 
+  // Stream a fresh answer for the question, updating the live preview as text
+  // arrives. Returns the completed text plus the model that produced it.
+  async function streamGeneration(trimmedQuestion: string) {
+    const response = await authenticatedFetch(user, "/api/generate", {
+      method: "POST",
+      body: JSON.stringify({ question: trimmedQuestion }),
+    });
+
+    if (!response.ok || !response.body) {
+      throw new Error(await readError(response));
+    }
+
+    const provider = response.headers.get("x-ai-provider") ?? "openai";
+    const model = response.headers.get("x-ai-model") ?? "gpt-5.5";
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let completeText = "";
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      completeText += decoder.decode(value, { stream: true });
+      setStreamingText(completeText);
+    }
+
+    completeText += decoder.decode();
+    return { completeText, provider, model };
+  }
+
   async function generate() {
     const trimmedQuestion = question.trim();
     if (trimmedQuestion.length < 3) {
@@ -149,29 +180,9 @@ export function AnswerWorkspace({ user }: { user: User }) {
     setStreamingText("");
 
     try {
-      const response = await authenticatedFetch(user, "/api/generate", {
-        method: "POST",
-        body: JSON.stringify({ question: trimmedQuestion }),
-      });
+      const { completeText, provider, model } =
+        await streamGeneration(trimmedQuestion);
 
-      if (!response.ok || !response.body) {
-        throw new Error(await readError(response));
-      }
-
-      const provider = response.headers.get("x-ai-provider") ?? "openai";
-      const model = response.headers.get("x-ai-model") ?? "gpt-5.5";
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let completeText = "";
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        completeText += decoder.decode(value, { stream: true });
-        setStreamingText(completeText);
-      }
-
-      completeText += decoder.decode();
       const saveResponse = await authenticatedFetch(user, "/api/answers", {
         method: "POST",
         body: JSON.stringify({
@@ -201,6 +212,55 @@ export function AnswerWorkspace({ user }: { user: User }) {
       );
     } finally {
       setIsGenerating(false);
+    }
+  }
+
+  // Re-run the model for an existing submission and overwrite it in place:
+  // same id, fresh AI baseline, edits reset back to that baseline.
+  async function regenerate() {
+    if (!answer) return;
+
+    setIsRegenerating(true);
+    setStreamingText("");
+
+    try {
+      const { completeText, provider, model } = await streamGeneration(
+        answer.question,
+      );
+
+      const response = await authenticatedFetch(
+        user,
+        `/api/answers/${answer.id}`,
+        {
+          method: "PUT",
+          body: JSON.stringify({
+            aiText: completeText,
+            provider,
+            model,
+          }),
+        },
+      );
+
+      if (!response.ok) {
+        throw new Error(await readError(response));
+      }
+
+      const body = (await response.json()) as {
+        answer: SerializedAnswer;
+      };
+      setAnswer(body.answer);
+      setCurrentText(body.answer.currentText);
+      setStreamingText("");
+      setIsSaved(true);
+      toast.success("Answer regenerated.");
+      void loadSubmissions();
+    } catch (error) {
+      console.error(error);
+      toast.error(
+        error instanceof Error ? error.message : "Regeneration failed.",
+      );
+    } finally {
+      setIsRegenerating(false);
     }
   }
 
@@ -353,12 +413,14 @@ export function AnswerWorkspace({ user }: { user: User }) {
           </Card>
         ) : null}
 
-        {isGenerating ? (
+        {isGenerating || isRegenerating ? (
           <Card>
             <CardHeader>
               <div className="flex items-center gap-2">
                 <LoaderCircleIcon className="size-4 animate-spin" />
-                <CardTitle>Writing</CardTitle>
+                <CardTitle>
+                  {isRegenerating ? "Regenerating" : "Writing"}
+                </CardTitle>
               </div>
             </CardHeader>
             <CardContent>
@@ -377,9 +439,24 @@ export function AnswerWorkspace({ user }: { user: User }) {
                   <div>
                     <CardTitle>Rendered answer</CardTitle>
                   </div>
-                  <Badge variant="outline">
-                    {answer.provider} / {answer.model}
-                  </Badge>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge variant="outline">
+                      {answer.provider} / {answer.model}
+                    </Badge>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={regenerate}
+                      disabled={isGenerating || isRegenerating}
+                    >
+                      {isRegenerating ? (
+                        <LoaderCircleIcon className="animate-spin" />
+                      ) : (
+                        <RefreshCwIcon />
+                      )}
+                      {isRegenerating ? "Regenerating..." : "Regenerate"}
+                    </Button>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent>

@@ -103,6 +103,57 @@ export async function updateAnswer(
   });
 }
 
+export async function regenerateAnswer(
+  id: string,
+  userId: string,
+  aiText: string,
+  provider: string,
+  model: string,
+) {
+  if (!ObjectId.isValid(id)) {
+    return null;
+  }
+
+  const collection = await answersCollection();
+  const existing = await collection.findOne({
+    _id: new ObjectId(id),
+    userId,
+  });
+
+  if (!existing) {
+    return null;
+  }
+
+  // Overwrite in place: replace the AI baseline, reset the user's edits back to
+  // that baseline, and recompute attribution. Keep the same id, question, and
+  // createdAt so the submission stays addressable.
+  const updatedAt = new Date();
+  const segments = attributeText(aiText, aiText);
+  await collection.updateOne(
+    { _id: existing._id, userId },
+    {
+      $set: {
+        aiText,
+        currentText: aiText,
+        segments,
+        provider,
+        model,
+        updatedAt,
+      },
+    },
+  );
+
+  return serializeAnswer({
+    ...existing,
+    aiText,
+    currentText: aiText,
+    segments,
+    provider,
+    model,
+    updatedAt,
+  });
+}
+
 export async function deleteAnswer(id: string, userId: string) {
   if (!ObjectId.isValid(id)) {
     return false;

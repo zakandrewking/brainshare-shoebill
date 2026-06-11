@@ -7,10 +7,6 @@ and never drop an item — move finished work to "Recently shipped".
 
 ## Now
 
-- [ ] **Regenerate + overwrite an existing submission.** When viewing a
-      submission, offer "Regenerate" that re-runs the model for that question
-      and overwrites the existing version in place (same id): replace `aiText`,
-      reset `currentText`, recompute attribution.
 - [ ] **Rework submissions UI: open via a button + per-submission URLs.** Move
       the submissions list off the main page behind a button (panel/sheet or
       dedicated view). Give each submission a real URL (route `/a/[id]` or
@@ -52,6 +48,10 @@ and never drop an item — move finished work to "Recently shipped".
 
 ## Recently shipped
 
+- [x] **Regenerate + overwrite an existing submission.** "Regenerate" button on
+      a viewed submission re-streams the model and overwrites in place (same id)
+      via `PUT /api/answers/[id]` + `regenerateAnswer`: new `aiText`, `currentText`
+      reset to baseline, attribution recomputed.
 - [x] Vercel autodeploy on push to `main` — confirmed already git-connected;
       latest push deployed to Production (Ready). Runtime still needs the two
       secrets above before prod actually works.
