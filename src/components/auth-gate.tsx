@@ -8,16 +8,13 @@ import {
   signOut,
   type User,
 } from "firebase/auth";
-import { LockKeyholeIcon } from "lucide-react";
 import { toast } from "sonner";
 
 import { AnswerWorkspace } from "@/components/answer-workspace";
-import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -86,9 +83,6 @@ export function AuthGate() {
 
   return (
     <main className="relative flex min-h-screen items-center justify-center overflow-hidden px-6 py-16">
-      <div className="absolute right-6 top-6">
-        <ThemeToggle />
-      </div>
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,oklch(0.7_0.14_260_/_0.16),transparent_45%)]" />
       <Card className="relative w-full max-w-md shadow-2xl shadow-black/5">
         <CardHeader className="gap-4">
@@ -101,15 +95,9 @@ export function AuthGate() {
             priority
             className="size-16 [image-rendering:pixelated]"
           />
-          <div className="space-y-1.5">
-            <CardTitle className="text-xl">Brainshare</CardTitle>
-            <CardDescription className="text-balance">
-              Ask a question, shape the answer, and keep a precise record of
-              what the model wrote and what you changed.
-            </CardDescription>
-          </div>
+          <CardTitle className="text-xl">Brainshare</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent>
           <Button
             size="lg"
             className="w-full"
@@ -119,10 +107,6 @@ export function AuthGate() {
             <GithubIcon />
             {signingIn ? "Opening GitHub..." : "Continue with GitHub"}
           </Button>
-          <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
-            <LockKeyholeIcon className="size-3.5" />
-            Private preview for {allowedEmail}
-          </div>
         </CardContent>
       </Card>
     </main>

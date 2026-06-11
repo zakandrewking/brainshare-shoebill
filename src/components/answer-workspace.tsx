@@ -1,20 +1,21 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import { signOut, type User } from "firebase/auth";
 import {
   CheckIcon,
   LoaderCircleIcon,
   LogOutIcon,
+  PlusIcon,
   SaveIcon,
   SendIcon,
+  Trash2Icon,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Streamdown } from "streamdown";
 
-import { AttributionView } from "@/components/attribution-view";
-import { ThemeToggle } from "@/components/theme-toggle";
+import { HighlightedEditor } from "@/components/highlighted-editor";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -27,7 +28,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
-import { attributeText } from "@/lib/attribution";
+import { attributeText, attributionCounts } from "@/lib/attribution";
 import { getFirebaseAuth } from "@/lib/firebase/client";
 import type { SerializedAnswer } from "@/lib/types";
 
@@ -64,11 +65,76 @@ export function AnswerWorkspace({ user }: { user: User }) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isSaved, setIsSaved] = useState(true);
+  const [submissions, setSubmissions] = useState<SerializedAnswer[]>([]);
 
   const segments = useMemo(
     () => (answer ? attributeText(answer.aiText, currentText) : []),
     [answer, currentText],
   );
+  const counts = useMemo(() => attributionCounts(segments), [segments]);
+  const userPercent =
+    counts.ai + counts.user
+      ? Math.round((counts.user / (counts.ai + counts.user)) * 100)
+      : 0;
+
+  const loadSubmissions = useCallback(async () => {
+    try {
+      const response = await authenticatedFetch(user, "/api/answers");
+      if (!response.ok) return;
+      const body = (await response.json()) as {
+        answers: SerializedAnswer[];
+      };
+      setSubmissions(body.answers);
+    } catch (error) {
+      console.error(error);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    // Mount fetch: setSubmissions runs after an await, not synchronously,
+    // so there is no cascading-render risk the rule guards against.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void loadSubmissions();
+  }, [loadSubmissions]);
+
+  function openSubmission(submission: SerializedAnswer) {
+    setAnswer(submission);
+    setCurrentText(submission.currentText);
+    setQuestion(submission.question);
+    setStreamingText("");
+    setIsSaved(true);
+  }
+
+  function startNew() {
+    setAnswer(null);
+    setQuestion("");
+    setCurrentText("");
+    setStreamingText("");
+    setIsSaved(true);
+  }
+
+  async function deleteSubmission(id: string) {
+    try {
+      const response = await authenticatedFetch(user, `/api/answers/${id}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        throw new Error(await readError(response));
+      }
+
+      setSubmissions((previous) =>
+        previous.filter((submission) => submission.id !== id),
+      );
+      if (answer?.id === id) {
+        startNew();
+      }
+      toast.success("Submission deleted.");
+    } catch (error) {
+      console.error(error);
+      toast.error(error instanceof Error ? error.message : "Delete failed.");
+    }
+  }
 
   async function generate() {
     const trimmedQuestion = question.trim();
@@ -127,6 +193,7 @@ export function AnswerWorkspace({ user }: { user: User }) {
       setCurrentText(body.answer.currentText);
       setStreamingText("");
       setIsSaved(true);
+      void loadSubmissions();
     } catch (error) {
       console.error(error);
       toast.error(
@@ -162,6 +229,7 @@ export function AnswerWorkspace({ user }: { user: User }) {
       setCurrentText(body.answer.currentText);
       setIsSaved(true);
       toast.success("Answer saved.");
+      void loadSubmissions();
     } catch (error) {
       console.error(error);
       toast.error(error instanceof Error ? error.message : "Save failed.");
@@ -185,7 +253,10 @@ export function AnswerWorkspace({ user }: { user: User }) {
           />
           <span className="font-semibold tracking-tight">Brainshare</span>
           <div className="ml-auto flex items-center gap-1.5">
-            <ThemeToggle />
+            <Button variant="outline" size="sm" onClick={startNew}>
+              <PlusIcon />
+              New
+            </Button>
             <Avatar size="sm">
               {user.photoURL ? (
                 <AvatarImage src={user.photoURL} alt={user.displayName ?? ""} />
@@ -224,10 +295,7 @@ export function AnswerWorkspace({ user }: { user: User }) {
                 }
               }}
             />
-            <div className="flex items-center justify-between gap-3">
-              <span className="text-xs text-muted-foreground">
-                Press ⌘/Ctrl + Enter
-              </span>
+            <div className="flex items-center justify-end gap-3">
               <Button
                 size="lg"
                 onClick={generate}
@@ -243,6 +311,47 @@ export function AnswerWorkspace({ user }: { user: User }) {
             </div>
           </CardContent>
         </Card>
+
+        {submissions.length > 0 ? (
+          <Card>
+            <CardHeader>
+              <CardTitle>Submissions</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-1">
+              {submissions.map((submission) => (
+                <div
+                  key={submission.id}
+                  className={`flex items-center gap-1 rounded-lg border pr-1 transition-colors hover:bg-muted/60 ${
+                    answer?.id === submission.id
+                      ? "border-primary bg-muted/40"
+                      : "border-transparent"
+                  }`}
+                >
+                  <button
+                    type="button"
+                    onClick={() => openSubmission(submission)}
+                    className="flex min-w-0 flex-1 flex-col items-start gap-0.5 px-3 py-2 text-left"
+                  >
+                    <span className="line-clamp-1 w-full text-sm font-medium">
+                      {submission.question}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {new Date(submission.updatedAt).toLocaleString()}
+                    </span>
+                  </button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label="Delete submission"
+                    onClick={() => deleteSubmission(submission.id)}
+                  >
+                    <Trash2Icon />
+                  </Button>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        ) : null}
 
         {isGenerating ? (
           <Card>
@@ -280,14 +389,17 @@ export function AnswerWorkspace({ user }: { user: User }) {
               </CardContent>
             </Card>
 
-            <div className="grid gap-6 lg:grid-cols-2">
-              <Card>
-                <CardHeader>
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <CardTitle>Edit answer</CardTitle>
-                    </div>
-                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
+            <Card>
+              <CardHeader>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <CardTitle>Edit answer</CardTitle>
+                  <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                    <Badge variant="secondary">AI: {counts.ai} chars</Badge>
+                    <Badge className="bg-sky-500/12 text-sky-700 dark:text-sky-300">
+                      You: {counts.user} chars
+                    </Badge>
+                    <span>{userPercent}% edited</span>
+                    <span className="flex items-center gap-1">
                       {isSaved ? (
                         <>
                           <CheckIcon className="size-3.5" />
@@ -296,18 +408,23 @@ export function AnswerWorkspace({ user }: { user: User }) {
                       ) : (
                         "Unsaved"
                       )}
-                    </div>
+                    </span>
                   </div>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <Textarea
-                    value={currentText}
-                    onChange={(event) => {
-                      setCurrentText(event.target.value);
-                      setIsSaved(false);
-                    }}
-                    className="min-h-72 resize-y font-mono text-sm leading-6"
-                  />
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <HighlightedEditor
+                  value={currentText}
+                  segments={segments}
+                  onChange={(next) => {
+                    setCurrentText(next);
+                    setIsSaved(false);
+                  }}
+                />
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-xs text-muted-foreground">
+                    Highlighted text is yours; the rest is the AI baseline.
+                  </p>
                   <Button
                     variant="secondary"
                     onClick={save}
@@ -320,18 +437,9 @@ export function AnswerWorkspace({ user }: { user: User }) {
                     )}
                     {isSaving ? "Saving..." : "Save changes"}
                   </Button>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Authorship</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <AttributionView segments={segments} />
-                </CardContent>
-              </Card>
-            </div>
+                </div>
+              </CardContent>
+            </Card>
             <Separator />
             <p className="text-center text-xs text-muted-foreground">
               Generated {new Date(answer.createdAt).toLocaleString()} · Last
