@@ -11,11 +11,15 @@ never just the model name. Claim an item by setting the status to your handle
 and committing+pushing *before* you start work. If your push is rejected,
 someone claimed first — pull and pick another. Stale claims (>30 min, no new
 commits) may be reclaimed. On completion, move the item to "Recently shipped".
-**Next free id: T14.**
+**Next free id: T15.**
 
 ## Now
 
-_(Nothing actively in progress.)_
+- `[T14]` `wip:claude-opus-4.8/9yf1@2026-06-11T06:29Z` — **Prod GitHub login is
+  still broken.** Sign-in at brainshare.io fails. Diagnose the GitHub OAuth /
+  Firebase Auth flow (authorized domains, OAuth callback URL, `authDomain`
+  client config, popup vs redirect) and fix what's in code; surface any
+  console/config step the user must do.
 
 ## Next
 
