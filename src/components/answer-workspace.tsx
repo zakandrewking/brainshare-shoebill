@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Image from "next/image";
 import { signOut, type User } from "firebase/auth";
 import {
   CheckIcon,
@@ -8,7 +9,6 @@ import {
   LogOutIcon,
   SaveIcon,
   SendIcon,
-  SparklesIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Streamdown } from "streamdown";
@@ -21,7 +21,6 @@ import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -175,9 +174,15 @@ export function AnswerWorkspace({ user }: { user: User }) {
     <main className="min-h-screen bg-[radial-gradient(circle_at_top,oklch(0.7_0.13_260_/_0.1),transparent_38%)]">
       <header className="sticky top-0 z-20 border-b bg-background/80 backdrop-blur-xl">
         <div className="mx-auto flex h-16 w-full max-w-6xl items-center gap-3 px-5 sm:px-6">
-          <div className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-            <SparklesIcon className="size-4" />
-          </div>
+          <Image
+            src="/robot-csv.png"
+            alt="Brainshare robot"
+            width={32}
+            height={32}
+            unoptimized
+            priority
+            className="size-8 [image-rendering:pixelated]"
+          />
           <span className="font-semibold tracking-tight">Brainshare</span>
           <div className="ml-auto flex items-center gap-1.5">
             <ThemeToggle />
@@ -202,25 +207,7 @@ export function AnswerWorkspace({ user }: { user: User }) {
       </header>
 
       <div className="mx-auto w-full max-w-6xl space-y-6 px-5 py-8 sm:px-6 sm:py-12">
-        <section className="max-w-3xl space-y-2">
-          <Badge variant="outline">Private workspace</Badge>
-          <h1 className="text-balance text-3xl font-semibold tracking-tight sm:text-4xl">
-            Ask once. Make the answer yours.
-          </h1>
-          <p className="text-pretty text-muted-foreground">
-            Generate a focused answer, edit it directly, and see exactly which
-            words still come from the model.
-          </p>
-        </section>
-
         <Card>
-          <CardHeader>
-            <CardTitle>Your question</CardTitle>
-            <CardDescription>
-              The model is configured on the server and streams its response
-              as it writes.
-            </CardDescription>
-          </CardHeader>
           <CardContent className="space-y-3">
             <Label htmlFor="question">What do you want to know?</Label>
             <Textarea
@@ -264,9 +251,6 @@ export function AnswerWorkspace({ user }: { user: User }) {
                 <LoaderCircleIcon className="size-4 animate-spin" />
                 <CardTitle>Writing</CardTitle>
               </div>
-              <CardDescription>
-                Tokens are streaming from the configured model.
-              </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="min-h-40 rounded-xl border bg-background/70 p-5">
@@ -283,10 +267,6 @@ export function AnswerWorkspace({ user }: { user: User }) {
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
                     <CardTitle>Rendered answer</CardTitle>
-                    <CardDescription>
-                      Streamdown renders the same Markdown source you edit
-                      below.
-                    </CardDescription>
                   </div>
                   <Badge variant="outline">
                     {answer.provider} / {answer.model}
@@ -306,10 +286,6 @@ export function AnswerWorkspace({ user }: { user: User }) {
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <CardTitle>Edit answer</CardTitle>
-                      <CardDescription>
-                        Change anything. Your additions and replacements are
-                        tracked automatically.
-                      </CardDescription>
                     </div>
                     <div className="flex items-center gap-1 text-xs text-muted-foreground">
                       {isSaved ? (
@@ -350,10 +326,6 @@ export function AnswerWorkspace({ user }: { user: User }) {
               <Card>
                 <CardHeader>
                   <CardTitle>Authorship</CardTitle>
-                  <CardDescription>
-                    A live character-level comparison against the original AI
-                    response.
-                  </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <AttributionView segments={segments} />

@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import {
   onAuthStateChanged,
   signInWithPopup,
   signOut,
   type User,
 } from "firebase/auth";
-import { LockKeyholeIcon, SparklesIcon } from "lucide-react";
+import { LockKeyholeIcon } from "lucide-react";
 import { toast } from "sonner";
 
 import { AnswerWorkspace } from "@/components/answer-workspace";
@@ -91,9 +92,15 @@ export function AuthGate() {
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,oklch(0.7_0.14_260_/_0.16),transparent_45%)]" />
       <Card className="relative w-full max-w-md shadow-2xl shadow-black/5">
         <CardHeader className="gap-4">
-          <div className="flex size-11 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-            <SparklesIcon className="size-5" />
-          </div>
+          <Image
+            src="/robot-csv.png"
+            alt="Brainshare robot"
+            width={64}
+            height={64}
+            unoptimized
+            priority
+            className="size-16 [image-rendering:pixelated]"
+          />
           <div className="space-y-1.5">
             <CardTitle className="text-xl">Brainshare</CardTitle>
             <CardDescription className="text-balance">
