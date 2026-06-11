@@ -7,6 +7,21 @@ const nextCli = require.resolve("next/dist/bin/next");
 const firebaseScript = fileURLToPath(
   new URL("./firebase-emulator.mjs", import.meta.url),
 );
+const cleanAuthScript = fileURLToPath(
+  new URL("./clean-emulator-auth.mjs", import.meta.url),
+);
+
+// Fire-and-forget: once the auth emulator is up, prune any non-allowlisted
+// accounts so stray imported test users do not linger across restarts. The
+// script polls for readiness itself and exits on its own.
+spawn(process.execPath, [cleanAuthScript], {
+  env: {
+    ...process.env,
+    FIREBASE_AUTH_EMULATOR_HOST: "127.0.0.1:9099",
+    FIREBASE_PROJECT_ID: "demo-brainshare-shoebill",
+  },
+  stdio: "inherit",
+});
 
 const processes = [
   {
