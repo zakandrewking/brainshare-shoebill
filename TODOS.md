@@ -23,7 +23,7 @@ _(Nothing actively in progress.)_
   autocomplete dropdown.** As the user types, surface related prior questions.
   Shipping the keyword half first (no infra: ranks the already-loaded
   submissions client-side); vector/hybrid search deferred to T13.
-- `[T08]` `unclaimed` — **Local dev pattern agent-browser can drive end-to-end.**
+- `[T08]` `wip:claude-opus-4.8/ae44@2026-06-11T06:24Z` — **Local dev pattern agent-browser can drive end-to-end.**
   Signed-in UI is unreachable from agent-browser's headless Chrome:
   `onAuthStateChanged` never fires there (works in a normal browser;
   emulator/connectivity fine). Options: dev-only auth bypass/seeded session,
