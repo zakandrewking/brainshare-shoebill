@@ -9,6 +9,9 @@
 > 2. **Never clobber.** Re-read `TODOS.md` before editing it. NEVER remove or
 >    overwrite an item without moving it to "Recently shipped" — do not let an
 >    edit silently drop an entry.
+>    - Organizing IS encouraged: you may combine, deduplicate, reword, and
+>      reorder items to keep the list clean. That is different from silently
+>      dropping an unfinished request — keep the underlying work, just tidy it.
 > 3. **Keep it live.** Mark items in progress; move them to shipped the moment
 >    they land.
 > 4. **It is committed.** `TODOS.md` is tracked in git. Keep it up to date and

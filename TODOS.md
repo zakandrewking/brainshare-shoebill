@@ -29,10 +29,11 @@ and never drop an item — move finished work to "Recently shipped".
   - Already in Vercel Production: Firebase web config, `FIREBASE_PROJECT_ID`,
     `AI_PROVIDER`, `AI_MODEL`, `OPENAI_REASONING_EFFORT`, `MONGODB_DB`,
     `ALLOWED_EMAILS`.
-- [ ] **Autodeploy to Vercel on push.** Project is CLI-linked (`.vercel/`) but
-      not git-connected, so `git push` does NOT deploy yet. Run
-      `vercel git connect` to enable deploy-on-push to `main` — AFTER the two
-      secrets land, so the first prod deploy isn't broken.
+- [ ] **Locking on TODOS.md for multi-agent collaboration.** Design a mechanism
+      so concurrent AI agents don't duplicate or clobber work: e.g. an
+      owner/claim field per item, a status lifecycle (unclaimed → claimed →
+      done) with agent id + timestamp, or a separate lock file / git-based
+      claim commit. Decide approach.
 - [ ] **Wikipedia-style crosslinks between answers.** Identify references across
       answers and link them. Approach TBD (title/entity match vs `[[wiki-link]]`
       the model emits vs embeddings relatedness). Depends on per-submission URLs.
@@ -51,6 +52,10 @@ and never drop an item — move finished work to "Recently shipped".
 
 ## Recently shipped
 
+- [x] Vercel autodeploy on push to `main` — confirmed already git-connected;
+      latest push deployed to Production (Ready). Runtime still needs the two
+      secrets above before prod actually works.
+- [x] CLAUDE.md: noted it's OK to combine/dedupe/organize TODOS.md (vs. dropping).
 - [x] 8-bit robot mascot replaces SparklesIcon in sign-in card + header. (committed)
 - [x] Minimal workspace UI: removed hero copy + verbose card descriptions. (committed)
 - [x] Removed the color-scheme picker; theme is always `system`.
