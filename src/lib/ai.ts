@@ -6,7 +6,7 @@ import {
 import { streamText } from "ai";
 
 const systemPrompt =
-  "Answer the user's question in one clear, self-contained paragraph. Be accurate, direct, and useful. Do not use headings or bullet points.";
+  "Answer the user's question in one clear, self-contained paragraph. Be accurate, direct, and useful. Do not use headings or bullet points. If the question is ambiguous or its intent is unclear, interpret it as a philosophical question and answer it in thorough, thoughtful detail.";
 
 export type GenerationConfig = {
   model: string;
