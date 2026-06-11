@@ -17,9 +17,12 @@
 Everything goes here.** It is the durable memory across sessions — agents do
 not retain a task list on their own.
 
-- **Capture everything.** Every task, feature request, idea, follow-up, or
-  blocker the user raises or you discover goes into `TODOS.md` immediately —
-  before or as you start, not after.
+- **Capture every single request — no exceptions.** The moment the user makes
+  an ask, log it in `TODOS.md` *before* you act on it. This includes small,
+  quick, or one-line requests, mid-task interruptions, and asks that arrive
+  while you are working on something else. Never let a request go unrecorded;
+  if several land at once, add them all. Missing a request is a process failure.
+- Also capture every idea, follow-up, or blocker you discover while working.
 - **Keep it live during the dev loop.** As you work, continuously update it:
   add new items the moment they come up, mark items in progress, and check off
   or delete them the moment they ship. It should always reflect the true
