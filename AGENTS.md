@@ -65,8 +65,12 @@ the lock — no extra infra:
   you add an item.
 - **Status lifecycle.** `unclaimed` → `claimed:<agent>@<UTC>` (about to start) →
   `wip:<agent>@<UTC>` (actively working) → moved to "Recently shipped" (done).
-  `<agent>` is your stable handle (e.g. your model name); `<UTC>` comes from
-  `date -u +%Y-%m-%dT%H:%MZ`.
+  `<UTC>` comes from `date -u +%Y-%m-%dT%H:%MZ`.
+- **Handles must be unique per instance** — `<agent>` is `<model>/<short-id>`,
+  e.g. `claude-opus-4.8/ae44`, never just the model name. Two concurrent clients
+  of the same model would otherwise be indistinguishable, making ownership and
+  stale-claim takeover ambiguous. Pick a short id once per session (e.g. the
+  first 4 chars of your session/run id) and reuse it for every claim.
 - **Claim = commit + push, before working.** `git pull --rebase`, set the item's
   status to your handle, commit `claim T##: <title>`, and push. The git ref
   update is atomic: if your push is rejected, another agent claimed first —
