@@ -149,9 +149,15 @@ server in addition to any client-side messaging.
 After meaningful UI changes:
 
 1. Run focused checks, then `pnpm verify` before considering the work complete.
-2. Start the app with `pnpm dev:local` or `pnpm dev:mock`.
+2. For agent-browser inspection, drive a **production build**, not `next dev`:
+   `pnpm build && pnpm start` (or the deployed preview / `brainshare.io`). The
+   `next dev` server's Turbopack HMR / React Refresh stalls client hydration
+   under agent-browser's CDP-controlled Chrome — the page sticks on the loading
+   skeleton and no effects run (reproduced headed and headless). A production
+   build hydrates normally. Use `pnpm dev:local` / `pnpm dev:mock` for everyday
+   hand testing in your own browser.
 3. Use [agent-browser](https://github.com/vercel-labs/agent-browser) to inspect
-   and operate the real local UI.
+   and operate the real UI.
 4. Check desktop and mobile widths, light and dark themes, browser console
    errors, and failed network requests.
 5. Exercise sign-in, streaming, editing, attribution, saving, and sign-out.
