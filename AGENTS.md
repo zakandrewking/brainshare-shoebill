@@ -11,6 +11,27 @@
   work.
 - Prefer small, reviewable changes over unrelated refactors.
 
+## Backlog (TODOS.md)
+
+**`TODOS.md` is the single source of truth for what we are working on.
+Everything goes here.** It is the durable memory across sessions — agents do
+not retain a task list on their own.
+
+- **Capture everything.** Every task, feature request, idea, follow-up, or
+  blocker the user raises or you discover goes into `TODOS.md` immediately —
+  before or as you start, not after.
+- **Keep it live during the dev loop.** As you work, continuously update it:
+  add new items the moment they come up, mark items in progress, and check off
+  or delete them the moment they ship. It should always reflect the true
+  current state of the work.
+- At the start of a session, read `TODOS.md` first to pick up outstanding work.
+- Sections: **Now** (actively in progress), **Next** (ready to pick up), and
+  **Ideas** (unscheduled; promote to Next when ready). Keep entries concrete
+  and verifiable.
+- `TODOS.md` is a local working file and is **gitignored — never commit it.**
+- This is the coarse, human-readable backlog. Use the in-session task tool for
+  fine-grained, ephemeral steps within a single task.
+
 ## Product
 
 Brainshare is a private AI-assisted writing app. A signed-in user asks a

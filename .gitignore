@@ -46,3 +46,9 @@ ui-debug.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Local dev process log
+dev.log
+
+# Local working backlog (never commit)
+TODOS.md
