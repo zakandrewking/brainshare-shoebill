@@ -5,6 +5,9 @@
 - Work autonomously from diagnosis through implementation and verification.
 - You are authorized to create focused commits and push them often. Do not ask
   for permission before committing or pushing coherent changes.
+- **Always push to `main`.** When work is committed and verified, fast-forward
+  (or merge) it onto `main` and push so it deploys to production — no need to
+  ask each time. Vercel autodeploys `main`.
 - Never commit secrets, `.env.local`, Firebase service accounts, API keys, or
   production database credentials.
 - Preserve user changes in a dirty worktree. Do not reset or revert unrelated
