@@ -17,9 +17,12 @@ _(Nothing actively in progress.)_
 
 ## Next
 
-- `[T05]` `unclaimed` — **Wikipedia-style crosslinks between answers.** Identify
-  references across answers and link them. Approach TBD (title/entity match vs
-  `[[wiki-link]]` the model emits vs embeddings relatedness). Depends on T02.
+- `[T05]` `wip:claude-opus-4.8/ae44@2026-06-11T06:11Z` — **Wikipedia-style
+  crosslinks between answers.** Approach chosen: model emits `[[Topic]]`
+  wiki-links; a pure `resolveCrosslinks(markdown, submissions)` util rewrites
+  `[[Topic]]` → `[Topic](?a=<id>)` for topics matching an existing submission
+  (normalized match), leaves others as plain text. Unit-tested; rendered answer
+  passes through it before Streamdown.
 - `[T06]` `unclaimed` — **Related-questions autocomplete dropdown (hybrid search).**
   As the user types, surface related prior questions via keyword + vector
   search. Needs infra decision: embeddings provider + vector store (Atlas Vector
