@@ -1,5 +1,6 @@
 {
   "projects": {
-    "default": "demo-brainshare-shoebill"
+    "default": "brainshare-a67c5",
+    "demo": "demo-brainshare-shoebill"
   }
 }

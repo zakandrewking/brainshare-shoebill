@@ -25,8 +25,10 @@ server in addition to any client-side messaging.
 - Next.js 16 App Router, React 19, TypeScript, Tailwind CSS 4
 - shadcn/ui components with `next-themes`
 - Firebase Authentication with GitHub OAuth
+- Production Firebase project: `brainshare-a67c5`
 - Firebase Admin token verification in route handlers
 - MongoDB Atlas in production and Atlas Local via Docker for development
+- Production MongoDB Atlas project: `6a2a2fac94fa5609d018973c`
 - Vercel AI SDK with OpenAI by default
 - `gpt-5.5` with `reasoningEffort: "high"` as the default model
 - Streamdown for streamed and static Markdown rendering

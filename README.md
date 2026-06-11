@@ -61,17 +61,18 @@ Stop MongoDB with `pnpm dev:down`. Named Docker volumes preserve local data.
    the `NEXT_PUBLIC_FIREBASE_*` variables.
 2. Enable GitHub under Authentication > Sign-in method.
 3. Create a GitHub OAuth app. Its callback URL is:
-   `https://<firebase-project-id>.firebaseapp.com/__/auth/handler`
+   `https://brainshare-a67c5.firebaseapp.com/__/auth/handler`
 4. Add `localhost`, the Vercel domains, and the custom domain to Firebase
    Authentication authorized domains.
-5. Create a Firebase service account and set `FIREBASE_PROJECT_ID`,
-   `FIREBASE_CLIENT_EMAIL`, and `FIREBASE_PRIVATE_KEY` in Vercel.
+5. Set `FIREBASE_PROJECT_ID=brainshare-a67c5` in Vercel. The server only
+   verifies ID-token signatures, so it does not require a service-account key.
 
 ### MongoDB
 
-Set `MONGODB_URI` to the Atlas connection string and `MONGODB_DB=brainshare`.
-Allow network access from Vercel. For an early-stage project this is commonly
-`0.0.0.0/0` with a strong database user password; narrow it when the deployment
+Use Atlas project `6a2a2fac94fa5609d018973c`. Set `MONGODB_URI` to that
+project's cluster connection string and `MONGODB_DB=brainshare`. Allow network
+access from Vercel. For an early-stage project this is commonly `0.0.0.0/0`
+with a strong database user password; narrow it when the deployment
 architecture supports stable egress.
 
 ### AI

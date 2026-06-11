@@ -1,5 +1,4 @@
 import {
-  applicationDefault,
   cert,
   getApps,
   initializeApp,
@@ -30,10 +29,7 @@ function getAdminApp() {
     return initializeApp({ projectId });
   }
 
-  return initializeApp({
-    credential: applicationDefault(),
-    projectId,
-  });
+  return initializeApp({ projectId });
 }
 
 export const adminAuth = getAuth(getAdminApp());
