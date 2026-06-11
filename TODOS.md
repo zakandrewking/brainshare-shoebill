@@ -11,21 +11,9 @@ never just the model name. Claim an item by setting the status to your handle
 and committing+pushing *before* you start work. If your push is rejected,
 someone claimed first — pull and pick another. Stale claims (>30 min, no new
 commits) may be reclaimed. On completion, move the item to "Recently shipped".
-**Next free id: T19.**
+**Next free id: T20.**
 
 ## Now
-
-- `[T15]` `wip:claude-opus-4.8/f3yl@2026-06-11T16:52Z` — **Center logo & title on
-  the splash/sign-in page.** Center the robot mascot + "Brainshare" title block.
-- `[T16]` `wip:claude-opus-4.8/f3yl@2026-06-11T16:52Z` — **Top bar mobile polish.**
-  Make the header/top bar work better on small screens (button crowding, spacing,
-  wrap). Verify at mobile widths.
-- `[T17]` `wip:claude-opus-4.8/f3yl@2026-06-11T16:52Z` — **ChatGPT-style fade-in
-  for streamed text.** As generated text streams in, fade it in smoothly
-  (imitate ChatGPT's incremental fade).
-- `[T18]` `wip:claude-opus-4.8/f3yl@2026-06-11T16:52Z` — **Literary typography for
-  generated answers.** Give the generated/answer text fonts & styling that feel
-  more like a literary source (serif/book feel) while still rendering markdown.
 
 - `[T14]` `wip:claude-opus-4.8/ae44@2026-06-11T15:28Z` (taken over from 9yf1, user-directed) — **Prod GitHub login is
   still broken.** CODE DONE (pushed): auth-gate now (a) surfaces the real
@@ -49,6 +37,28 @@ commits) may be reclaimed. On completion, move the item to "Recently shipped".
 
 ## Recently shipped
 
+- [x] `[T15]` Splash logo + "Brainshare" title now centered (CardHeader
+      `justify-items-center text-center`). Verified live at mobile (390px, 2x)
+      and desktop widths via agent-browser screenshots.
+- [x] `[T16]` Top bar mobile polish: Submissions/New collapse to icon-only
+      buttons below `sm` (labels `hidden sm:inline`, `aria-label`s added), the
+      wordmark truncates, mascot `shrink-0`, tighter `gap-1` on mobile. Build
+      green; signed-in width review still needs OAuth (not headlessly drivable).
+- [x] `[T17]` ChatGPT-style fade-in for streamed answers: Streamdown
+      `animated={{ animation: "fadeIn", sep: "word", duration: 450 }}` on the
+      streaming well (word-by-word fade; `sd-fadeIn` keyframes ship in
+      streamdown/styles.css). Static rendered view unaffected.
+- [x] `[T18]` Literary typography for generated answers: new `.literary-prose`
+      (system old-style serif — Iowan/Palatino/Georgia — with book leading &
+      measure, italic blockquotes, scaled headings) on the rendered + streaming
+      wells; code/pre stay monospaced. Full markdown still renders. No web-font
+      network dependency.
+- [x] `[T19]` Splash no longer crashes on a bad/missing Firebase config:
+      `getRedirectResult()` throws *synchronously* on `auth/invalid-api-key`,
+      which was escaping the `.catch()` and taking the whole page to Next's error
+      boundary. Auth init is now wrapped in try/catch (degrades to a toast + the
+      reachable sign-in card), with a dedicated `auth/invalid-api-key` message.
+      Reproduced the crash and verified the fix live in agent-browser.
 - [x] `[T08]` Dev pattern for agent-browser: drive a **production build** (`pnpm build && pnpm start`) or the deployed preview — NOT `next dev`, whose Turbopack HMR/React Refresh stalls client hydration under agent-browser's CDP Chrome (reproduced headed+headless; prod hydrates fine). Documented in AGENTS.md Verification Loop. Also added a 6s auth-splash loading timeout so it can't hang. Verified brainshare.io hydrates in agent-browser + screenshotted the retro sign-in. (Signed-in E2E still needs GitHub OAuth, not headlessly drivable.)
 - [x] `[T06]` Related-questions autocomplete (keyword half). Pure, unit-tested
       `findRelatedQuestions` (`lib/related.ts`, 8 tests) ranks the already-loaded

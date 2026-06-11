@@ -370,7 +370,7 @@ export function AnswerWorkspace({ user }: { user: User }) {
   return (
     <main className="min-h-screen bg-background">
       <header className="retro-raised sticky top-0 z-20 bg-background">
-        <div className="mx-auto flex h-16 w-full max-w-6xl items-center gap-3 px-5 sm:px-6">
+        <div className="mx-auto flex h-16 w-full max-w-6xl items-center gap-2 px-4 sm:gap-3 sm:px-6">
           <Image
             src="/robot-csv.png"
             alt="Brainshare robot"
@@ -378,26 +378,34 @@ export function AnswerWorkspace({ user }: { user: User }) {
             height={32}
             unoptimized
             priority
-            className="size-8 [image-rendering:pixelated]"
+            className="size-8 shrink-0 [image-rendering:pixelated]"
           />
-          <span className="font-semibold tracking-tight">Brainshare</span>
-          <div className="ml-auto flex items-center gap-1.5">
+          <span className="truncate font-semibold tracking-tight">
+            Brainshare
+          </span>
+          <div className="ml-auto flex items-center gap-1 sm:gap-1.5">
             <Button
               variant="outline"
               size="sm"
+              aria-label="Submissions"
               onClick={() => setSheetOpen(true)}
             >
               <LayersIcon />
-              Submissions
+              <span className="hidden sm:inline">Submissions</span>
               {submissions.length > 0 ? (
                 <Badge variant="secondary" className="ml-0.5 px-1.5">
                   {submissions.length}
                 </Badge>
               ) : null}
             </Button>
-            <Button variant="outline" size="sm" onClick={startNew}>
+            <Button
+              variant="outline"
+              size="sm"
+              aria-label="New"
+              onClick={startNew}
+            >
               <PlusIcon />
-              New
+              <span className="hidden sm:inline">New</span>
             </Button>
             <Avatar size="sm">
               {user.photoURL ? (
@@ -556,8 +564,13 @@ export function AnswerWorkspace({ user }: { user: User }) {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="retro-sunken min-h-40 p-5">
-                <Streamdown isAnimating>{streamingText}</Streamdown>
+              <div className="retro-sunken literary-prose min-h-40 p-5">
+                <Streamdown
+                  isAnimating
+                  animated={{ animation: "fadeIn", sep: "word", duration: 450 }}
+                >
+                  {streamingText}
+                </Streamdown>
               </div>
             </CardContent>
           </Card>
@@ -592,7 +605,7 @@ export function AnswerWorkspace({ user }: { user: User }) {
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="retro-sunken min-h-32 p-5">
+                <div className="retro-sunken literary-prose min-h-32 p-5">
                   <Streamdown mode="static">{renderedText}</Streamdown>
                 </div>
               </CardContent>

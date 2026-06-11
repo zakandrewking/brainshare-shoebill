@@ -48,6 +48,9 @@ function describeAuthError(error: unknown): string {
       ? String((error as { code?: unknown }).code)
       : undefined;
   switch (code) {
+    case "auth/invalid-api-key":
+    case "auth/api-key-not-valid.-please-pass-a-valid-api-key.":
+      return "Firebase isn't configured: the public API key is missing or invalid. Set NEXT_PUBLIC_FIREBASE_* in the environment.";
     case "auth/unauthorized-domain":
       return "This domain isn't authorized for sign-in. Add it in Firebase → Authentication → Settings → Authorized domains.";
     case "auth/operation-not-allowed":
@@ -86,37 +89,54 @@ export function AuthGate() {
   const [signingIn, setSigningIn] = useState(false);
 
   useEffect(() => {
-    const auth = getFirebaseAuth();
-    // Complete a redirect-based sign-in (used as a popup fallback) on return.
-    getRedirectResult(auth)
-      .then((result) => {
-        if (result) {
-          void enforceAllowlist(auth, result);
-        }
-      })
-      .catch((error) => {
-        console.error(error);
-        toast.error(describeAuthError(error));
-      });
-
-    const unsubscribe = onAuthStateChanged(auth, (nextUser) => {
-      setUser(nextUser);
-      setLoading(false);
-    });
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    let unsubscribe = () => {};
     // Never hang on the splash: if auth initialization stalls, fall back to the
     // signed-out view after a few seconds so sign-in stays reachable.
-    const timeout = setTimeout(() => setLoading(false), 6000);
+    timers.push(setTimeout(() => setLoading(false), 6000));
+
+    try {
+      const auth = getFirebaseAuth();
+
+      // Complete a redirect-based sign-in (used as a popup fallback) on return.
+      // getRedirectResult can throw *synchronously* on a config error, escaping
+      // the promise chain, so the surrounding try guards the call itself too.
+      getRedirectResult(auth)
+        .then((result) => {
+          if (result) {
+            void enforceAllowlist(auth, result);
+          }
+        })
+        .catch((error) => {
+          console.error(error);
+          toast.error(describeAuthError(error));
+        });
+
+      unsubscribe = onAuthStateChanged(auth, (nextUser) => {
+        setUser(nextUser);
+        setLoading(false);
+      });
+    } catch (error) {
+      // A bad/missing Firebase config (e.g. invalid-api-key) throws here. Don't
+      // let it crash the page — surface it and drop the skeleton so the
+      // signed-out view (and any retry) stays reachable. Deferred via a timer
+      // to avoid a synchronous setState during the effect.
+      console.error(error);
+      toast.error(describeAuthError(error));
+      timers.push(setTimeout(() => setLoading(false), 0));
+    }
+
     return () => {
       unsubscribe();
-      clearTimeout(timeout);
+      timers.forEach(clearTimeout);
     };
   }, []);
 
   async function handleSignIn() {
     setSigningIn(true);
-    const auth = getFirebaseAuth();
 
     try {
+      const auth = getFirebaseAuth();
       const result = await signInWithPopup(auth, getGithubProvider());
       await enforceAllowlist(auth, result);
     } catch (error) {
@@ -128,8 +148,9 @@ export function AuthGate() {
 
       if (code && POPUP_FALLBACK_CODES.has(code)) {
         // Retry with a full-page redirect; the result is handled on return.
+        // getFirebaseAuth() is cached, so this returns the same instance.
         try {
-          await signInWithRedirect(auth, getGithubProvider());
+          await signInWithRedirect(getFirebaseAuth(), getGithubProvider());
           return;
         } catch (redirectError) {
           console.error(redirectError);
@@ -161,7 +182,7 @@ export function AuthGate() {
   return (
     <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-background px-6 py-16">
       <Card className="relative w-full max-w-md">
-        <CardHeader className="gap-4">
+        <CardHeader className="justify-items-center gap-4 text-center">
           <Image
             src="/robot-csv.png"
             alt="Brainshare robot"

@@ -216,3 +216,49 @@
   background: #000080;
   color: #ffffff;
 }
+
+/* ───────────────────────────────────────────────────────────────────────────
+   Literary prose: generated answers read like a printed book — an old-style
+   serif, generous measure and leading — while still rendering full markdown.
+   Applied to the rendered + streaming answer wells. Code stays monospaced.
+   Uses only system serif faces so the build keeps no font network dependency.
+   ──────────────────────────────────────────────────────────────────────── */
+.literary-prose {
+  font-family: "Iowan Old Style", "Palatino Linotype", "Palatino", "Book Antiqua",
+    "Georgia", "Times New Roman", serif;
+  font-size: 1.0625rem;
+  line-height: 1.72;
+  letter-spacing: 0.005em;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+.literary-prose h1,
+.literary-prose h2,
+.literary-prose h3,
+.literary-prose h4 {
+  font-family: inherit;
+  font-weight: 600;
+  letter-spacing: 0;
+  line-height: 1.3;
+}
+.literary-prose h1 {
+  font-size: 1.55em;
+}
+.literary-prose h2 {
+  font-size: 1.3em;
+}
+.literary-prose h3 {
+  font-size: 1.12em;
+}
+.literary-prose blockquote {
+  font-style: italic;
+  color: var(--muted-foreground);
+}
+/* Keep technical content in the monospace face, not the book serif. */
+.literary-prose code,
+.literary-prose kbd,
+.literary-prose pre,
+.literary-prose pre * {
+  font-family: var(--font-mono);
+  letter-spacing: 0;
+}
