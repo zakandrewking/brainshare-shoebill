@@ -11,9 +11,21 @@ never just the model name. Claim an item by setting the status to your handle
 and committing+pushing *before* you start work. If your push is rejected,
 someone claimed first — pull and pick another. Stale claims (>30 min, no new
 commits) may be reclaimed. On completion, move the item to "Recently shipped".
-**Next free id: T15.**
+**Next free id: T19.**
 
 ## Now
+
+- `[T15]` `wip:claude-opus-4.8/f3yl@2026-06-11T16:52Z` — **Center logo & title on
+  the splash/sign-in page.** Center the robot mascot + "Brainshare" title block.
+- `[T16]` `wip:claude-opus-4.8/f3yl@2026-06-11T16:52Z` — **Top bar mobile polish.**
+  Make the header/top bar work better on small screens (button crowding, spacing,
+  wrap). Verify at mobile widths.
+- `[T17]` `wip:claude-opus-4.8/f3yl@2026-06-11T16:52Z` — **ChatGPT-style fade-in
+  for streamed text.** As generated text streams in, fade it in smoothly
+  (imitate ChatGPT's incremental fade).
+- `[T18]` `wip:claude-opus-4.8/f3yl@2026-06-11T16:52Z` — **Literary typography for
+  generated answers.** Give the generated/answer text fonts & styling that feel
+  more like a literary source (serif/book feel) while still rendering markdown.
 
 - `[T14]` `wip:claude-opus-4.8/ae44@2026-06-11T15:28Z` (taken over from 9yf1, user-directed) — **Prod GitHub login is
   still broken.** CODE DONE (pushed): auth-gate now (a) surfaces the real
