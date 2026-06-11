@@ -19,10 +19,6 @@ _(Nothing actively in progress.)_
 
 ## Next
 
-- `[T06]` `wip:claude-opus-4.8/9yf1@2026-06-11T06:19Z` — **Related-questions
-  autocomplete dropdown.** As the user types, surface related prior questions.
-  Shipping the keyword half first (no infra: ranks the already-loaded
-  submissions client-side); vector/hybrid search deferred to T13.
 - `[T08]` `wip:claude-opus-4.8/ae44@2026-06-11T06:24Z` — **Local dev pattern agent-browser can drive end-to-end.**
   Signed-in UI is unreachable from agent-browser's headless Chrome:
   `onAuthStateChanged` never fires there (works in a normal browser;
@@ -35,6 +31,13 @@ _(Nothing actively in progress.)_
 
 ## Recently shipped
 
+- [x] `[T06]` Related-questions autocomplete (keyword half). Pure, unit-tested
+      `findRelatedQuestions` (`lib/related.ts`, 8 tests) ranks the already-loaded
+      submissions by shared significant words + a substring/prefix boost,
+      stopword-filtered, newest-first tie-break. Dropdown under the question box
+      surfaces matches as you type; clicking opens that submission (`?a=<id>`).
+      No new infra/endpoint. Vector/hybrid ranking deferred to T13. Build green;
+      needs signed-in visual review.
 - [x] `[T07]` Auto-purge non-allowlisted emulator accounts. `scripts/clean-emulator-auth.mjs` deletes any emulator account whose email isn't in `ALLOWED_EMAILS`; `dev.mjs` runs it once the emulator is up, so stray imports (`panda.algae.*`) no longer survive restarts. Verified: injected junk account removed, allowlisted kept.
 - [x] `[T12]` AGENTS.md: added an explicit rule that ALL feedback (corrections,
       reactions, "oops" notes, preferences, offhand remarks) is captured in

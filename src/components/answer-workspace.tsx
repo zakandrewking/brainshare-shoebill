@@ -11,6 +11,7 @@ import {
   PlusIcon,
   RefreshCwIcon,
   SaveIcon,
+  SearchIcon,
   SendIcon,
   Trash2Icon,
 } from "lucide-react";
@@ -39,6 +40,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { attributeText, attributionCounts } from "@/lib/attribution";
 import { resolveCrosslinks } from "@/lib/crosslinks";
+import { findRelatedQuestions } from "@/lib/related";
 import { getFirebaseAuth } from "@/lib/firebase/client";
 import type { SerializedAnswer } from "@/lib/types";
 
@@ -78,9 +80,18 @@ export function AnswerWorkspace({ user }: { user: User }) {
   const [isSaved, setIsSaved] = useState(true);
   const [submissions, setSubmissions] = useState<SerializedAnswer[]>([]);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [questionFocused, setQuestionFocused] = useState(false);
   // Mirror submissions for the popstate handler, which reads the latest list
   // without re-subscribing on every change.
   const submissionsRef = useRef<SerializedAnswer[]>([]);
+
+  // Prior questions related to what's being typed, surfaced as autocomplete.
+  const relatedQuestions = useMemo(
+    () => findRelatedQuestions(question, submissions, { excludeId: answer?.id }),
+    [question, submissions, answer?.id],
+  );
+  const showRelated =
+    questionFocused && !isGenerating && relatedQuestions.length > 0;
 
   const segments = useMemo(
     () => (answer ? attributeText(answer.aiText, currentText) : []),
@@ -463,20 +474,60 @@ export function AnswerWorkspace({ user }: { user: User }) {
         <Card>
           <CardContent className="space-y-3">
             <Label htmlFor="question">What do you want to know?</Label>
-            <Textarea
-              id="question"
-              value={question}
-              onChange={(event) => setQuestion(event.target.value)}
-              placeholder="For example: What makes a strong product strategy?"
-              className="min-h-28 resize-y text-base"
-              disabled={isGenerating}
-              onKeyDown={(event) => {
-                if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
-                  event.preventDefault();
-                  void generate();
-                }
-              }}
-            />
+            <div className="relative">
+              <Textarea
+                id="question"
+                value={question}
+                onChange={(event) => setQuestion(event.target.value)}
+                onFocus={() => setQuestionFocused(true)}
+                // Delay so a click on a suggestion lands before it unmounts.
+                onBlur={() => setTimeout(() => setQuestionFocused(false), 120)}
+                placeholder="For example: What makes a strong product strategy?"
+                className="min-h-28 resize-y text-base"
+                disabled={isGenerating}
+                onKeyDown={(event) => {
+                  if (event.key === "Escape") {
+                    setQuestionFocused(false);
+                    return;
+                  }
+                  if (
+                    (event.metaKey || event.ctrlKey) &&
+                    event.key === "Enter"
+                  ) {
+                    event.preventDefault();
+                    void generate();
+                  }
+                }}
+              />
+              {showRelated ? (
+                <div className="retro-raised absolute top-full right-0 left-0 z-30 mt-1 max-h-64 overflow-y-auto bg-popover py-1">
+                  <p className="px-3 py-1 text-xs font-medium text-muted-foreground">
+                    Related questions
+                  </p>
+                  {relatedQuestions.map((related) => (
+                    <button
+                      key={related.id}
+                      type="button"
+                      // Keep focus on the textarea so onBlur doesn't fire first.
+                      onMouseDown={(event) => event.preventDefault()}
+                      onClick={() => {
+                        const match = submissions.find(
+                          (submission) => submission.id === related.id,
+                        );
+                        if (match) {
+                          openSubmission(match);
+                        }
+                        setQuestionFocused(false);
+                      }}
+                      className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm hover:bg-accent hover:text-accent-foreground"
+                    >
+                      <SearchIcon className="size-3.5 shrink-0 text-muted-foreground" />
+                      <span className="line-clamp-1">{related.question}</span>
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+            </div>
             <div className="flex items-center justify-end gap-3">
               <Button
                 size="lg"
