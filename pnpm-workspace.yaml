@@ -4,3 +4,10 @@ allowBuilds:
   re2: true
   sharp: true
   unrs-resolver: true
+
+# firebase-admin@14 -> jwks-rsa@4 require()s jose; jose@6 is ESM-only and
+# crashes Vercel's server runtime (ERR_REQUIRE_ESM). jose@4 ships CJS and has
+# the same decode/import API jwks-rsa uses. Scope the pin to jwks-rsa so the
+# dev/CLI tools keep jose@6.
+overrides:
+  jwks-rsa>jose: 4.15.9
