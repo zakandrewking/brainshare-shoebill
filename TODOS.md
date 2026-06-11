@@ -17,17 +17,6 @@ _(Nothing actively in progress.)_
 
 ## Next
 
-- `[T04]` `wip:claude-opus-4.8@2026-06-11T05:51Z` — **Get the app working in
-  production.** Secrets set in Vercel Production (`OPENAI_API_KEY`, `MONGODB_URI`,
-  `MONGODB_DB`); Atlas Network Access `0.0.0.0/0`. Autodeploy + brainshare.io
-  alias current. ROOT CAUSE of prod 500 on all API routes (found via vercel
-  logs): `ERR_REQUIRE_ESM` — `firebase-admin@14 → jwks-rsa@4` `require()`s
-  `jose@6` (pure ESM) in the Vercel Node runtime. FIX IN FLIGHT: pin
-  `engines.node` to `22.x` (require(ESM) of sync ESM works on Node ≥22.12; jose
-  has no top-level await). If Vercel is already on 22 and it still 500s, fall
-  back to bundling firebase-admin's jose instead of externalizing it. Verify:
-  unauth API should return 401, and a signed-in smoke test should generate +
-  persist.
 - `[T05]` `unclaimed` — **Wikipedia-style crosslinks between answers.** Identify
   references across answers and link them. Approach TBD (title/entity match vs
   `[[wiki-link]]` the model emits vs embeddings relatedness). Depends on T02.
@@ -52,6 +41,14 @@ _(Nothing actively in progress.)_
 
 ## Recently shipped
 
+- [x] `[T04]` Prod unblocked. Root cause of the all-routes 500 was
+      `ERR_REQUIRE_ESM` (`firebase-admin@14 → jwks-rsa@4` require()s ESM-only
+      `jose@6` on Vercel). Fixed by pinning `jwks-rsa>jose` to `4.15.9` (CJS) via
+      pnpm overrides in `pnpm-workspace.yaml`; also pinned `engines.node` 22.x.
+      Live API now returns 401 for unauth (was 500); secrets + Atlas `0.0.0.0/0`
+      set; autodeploy current on brainshare.io. REMAINING (user): signed-in
+      smoke test — log in at brainshare.io, ask a question, confirm it streams,
+      saves, and reappears after reload.
 - [x] `[T03]` Retro restyle (Win95 / classic Mac chrome): `--radius: 0`, silver
       palette + dark "graphite" variant, centralized raised/sunken bevel system
       in `globals.css` (unlayered `--raise`/`--sink` keyed off `data-slot`),
