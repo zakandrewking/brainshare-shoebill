@@ -23,7 +23,7 @@ _(Nothing actively in progress.)_
   autocomplete dropdown.** As the user types, surface related prior questions.
   Shipping the keyword half first (no infra: ranks the already-loaded
   submissions client-side); vector/hybrid search deferred to T13.
-- `[T07]` `unclaimed` — **Emulator re-imports deleted accounts on restart.** Each
+- `[T07]` `wip:claude-opus-4.8/ae44@2026-06-11T06:21Z` — **Emulator re-imports deleted accounts on restart.** Each
   restart re-imports `panda.algae.992@example.com` from
   `.firebase/emulator-data/auth_export/accounts.json`. Fix the fixture or enable
   export-on-exit so deletions persist.
