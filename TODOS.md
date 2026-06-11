@@ -21,12 +21,16 @@ move the item to "Recently shipped". **Next free id: T10.**
 ## Next
 
 - `[T04]` `wip:claude-opus-4.8@2026-06-11T05:51Z` — **Get the app working in
-  production.** Both runtime secrets set in Vercel Production (`OPENAI_API_KEY`,
-  `MONGODB_URI`); `MONGODB_DB=brainshare`. Atlas Network Access must allow Vercel
-  (`0.0.0.0/0`). OPEN BUG: unauthenticated `POST /api/generate` returns 500 (not
-  401) on the live site — server route likely crashing at import/init (firebase-
-  admin?). Verify which deployment the prod domain points to (must be one built
-  AFTER the secrets landed), then trace the 500.
+  production.** Secrets set in Vercel Production (`OPENAI_API_KEY`, `MONGODB_URI`,
+  `MONGODB_DB`); Atlas Network Access `0.0.0.0/0`. Autodeploy + brainshare.io
+  alias current. ROOT CAUSE of prod 500 on all API routes (found via vercel
+  logs): `ERR_REQUIRE_ESM` — `firebase-admin@14 → jwks-rsa@4` `require()`s
+  `jose@6` (pure ESM) in the Vercel Node runtime. FIX IN FLIGHT: pin
+  `engines.node` to `22.x` (require(ESM) of sync ESM works on Node ≥22.12; jose
+  has no top-level await). If Vercel is already on 22 and it still 500s, fall
+  back to bundling firebase-admin's jose instead of externalizing it. Verify:
+  unauth API should return 401, and a signed-in smoke test should generate +
+  persist.
 - `[T05]` `unclaimed` — **Wikipedia-style crosslinks between answers.** Identify
   references across answers and link them. Approach TBD (title/entity match vs
   `[[wiki-link]]` the model emits vs embeddings relatedness). Depends on T02.
