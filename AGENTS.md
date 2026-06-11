@@ -37,6 +37,28 @@ not retain a task list on their own.
 - This is the coarse, human-readable backlog. Use the in-session task tool for
   fine-grained, ephemeral steps within a single task.
 
+## Multi-agent locking protocol
+
+`TODOS.md` may be edited by multiple agents/clients at once. Use git itself as
+the lock — no extra infra:
+
+- **Stable ids.** Every open item carries a `[T##]` id. Never reuse one. The
+  "Next free id" note at the top of `TODOS.md` is the counter — bump it whenever
+  you add an item.
+- **Status lifecycle.** `unclaimed` → `claimed:<agent>@<UTC>` (about to start) →
+  `wip:<agent>@<UTC>` (actively working) → moved to "Recently shipped" (done).
+  `<agent>` is your stable handle (e.g. your model name); `<UTC>` comes from
+  `date -u +%Y-%m-%dT%H:%MZ`.
+- **Claim = commit + push, before working.** `git pull --rebase`, set the item's
+  status to your handle, commit `claim T##: <title>`, and push. The git ref
+  update is atomic: if your push is rejected, another agent claimed first —
+  `git pull --rebase`, recheck the item, and if it is now someone else's, pick
+  another.
+- **Stale claims.** A `claimed`/`wip` item with no new commits for >30 min may
+  be reclaimed by any agent; note the takeover on the item.
+- **Release.** On completion, move the item to "Recently shipped" with a
+  one-line result, commit, and push.
+
 ## Product
 
 Brainshare is a private AI-assisted writing app. A signed-in user asks a

@@ -2,79 +2,76 @@
 
 Single source of truth for what we're working on. **Committed** — keep it live
 and push changes so alternative clients can coordinate. See `AGENTS.md` →
-"Backlog (TODOS.md)". When editing: capture every request the moment it's made,
-and never drop an item — move finished work to "Recently shipped".
+"Backlog (TODOS.md)" and "Multi-agent locking protocol".
+
+**Locking legend.** Each open item has a stable `[T##]` id and a status:
+`unclaimed` · `claimed:<agent>@<UTC>` · `wip:<agent>@<UTC>`. Claim an item by
+setting the status to your agent handle and committing+pushing *before* you
+start work. If your push is rejected, someone claimed first — pull and pick
+another. Stale claims (>30 min, no new commits) may be reclaimed. On completion,
+move the item to "Recently shipped". **Next free id: T10.**
 
 ## Now
 
-- [ ] **Rework submissions UI: open via a button + per-submission URLs.** Move
-      the submissions list off the main page behind a button (panel/sheet or
-      dedicated view). Give each submission a real URL (route `/a/[id]` or
-      `?a=<id>`) so answers are addressable/shareable. Foundational for crosslinks.
-- [ ] **Retro restyle: minimalism / Windows 95 / classic Mac OS.** Another pass
-      on the look — squared corners, classic gray chrome/bevels, system/pixel
-      font, flatten gradients. Pairs with the 8-bit mascot. Building blind
-      (agent-browser can't reach the signed-in UI); user reviews live.
+- `[T02]` `unclaimed` — **Rework submissions UI: open via a button + per-submission
+  URLs.** Move the list off the main page behind a button (panel/sheet or
+  dedicated view). Give each submission a real URL (`/a/[id]` or `?a=<id>`) so
+  answers are addressable. Foundational for crosslinks (T05).
+- `[T03]` `unclaimed` — **Retro restyle: minimalism / Windows 95 / classic Mac OS.**
+  Squared corners, classic gray chrome/bevels, system/pixel font, flatten
+  gradients. Pairs with the 8-bit mascot. Building blind (agent-browser can't
+  reach the signed-in UI); user reviews live.
 
 ## Next
 
-- [ ] **Get the app working in production.** Blocked on two secrets set in NO
-      Vercel environment — app can't generate or persist without them:
-  - [ ] `OPENAI_API_KEY` (Production) — needs user value.
-  - [ ] `MONGODB_URI` (Production) — Atlas connection string, needs user value.
-  - Already in Vercel Production: Firebase web config, `FIREBASE_PROJECT_ID`,
-    `AI_PROVIDER`, `AI_MODEL`, `OPENAI_REASONING_EFFORT`, `MONGODB_DB`,
-    `ALLOWED_EMAILS`.
-- [ ] **Locking on TODOS.md for multi-agent collaboration.** Design a mechanism
-      so concurrent AI agents don't duplicate or clobber work: e.g. an
-      owner/claim field per item, a status lifecycle (unclaimed → claimed →
-      done) with agent id + timestamp, or a separate lock file / git-based
-      claim commit. Decide approach.
-- [ ] **Wikipedia-style crosslinks between answers.** Identify references across
-      answers and link them. Approach TBD (title/entity match vs `[[wiki-link]]`
-      the model emits vs embeddings relatedness). Depends on per-submission URLs.
-- [ ] **Related-questions autocomplete dropdown (hybrid search).** As the user
-      types, surface related prior questions via keyword + vector search. Needs
-      infra decision: embeddings provider + vector store (Atlas Vector Search?).
-- [ ] **Emulator re-imports deleted accounts on restart.** Each restart
-      re-imports `panda.algae.992@example.com` from
-      `.firebase/emulator-data/auth_export/accounts.json` (re-deleted manually
-      each time). Fix the fixture or enable export-on-exit so deletions persist.
-- [ ] **Local dev pattern agent-browser can drive end-to-end.** Signed-in UI is
-      unreachable from agent-browser's headless Chrome: `onAuthStateChanged`
-      never fires there (works in a normal browser; emulator/connectivity fine).
-      Options: dev-only auth bypass/seeded session, emulator REST state import,
-      or a persistent Chrome profile with a pre-authed account.
+- `[T04]` `wip:claude-opus-4.8@2026-06-11T05:51Z` — **Get the app working in
+  production.** Both runtime secrets set in Vercel Production (`OPENAI_API_KEY`,
+  `MONGODB_URI`); `MONGODB_DB=brainshare`. Atlas Network Access must allow Vercel
+  (`0.0.0.0/0`). OPEN BUG: unauthenticated `POST /api/generate` returns 500 (not
+  401) on the live site — server route likely crashing at import/init (firebase-
+  admin?). Verify which deployment the prod domain points to (must be one built
+  AFTER the secrets landed), then trace the 500.
+- `[T05]` `unclaimed` — **Wikipedia-style crosslinks between answers.** Identify
+  references across answers and link them. Approach TBD (title/entity match vs
+  `[[wiki-link]]` the model emits vs embeddings relatedness). Depends on T02.
+- `[T06]` `unclaimed` — **Related-questions autocomplete dropdown (hybrid search).**
+  As the user types, surface related prior questions via keyword + vector
+  search. Needs infra decision: embeddings provider + vector store (Atlas Vector
+  Search?).
+- `[T07]` `unclaimed` — **Emulator re-imports deleted accounts on restart.** Each
+  restart re-imports `panda.algae.992@example.com` from
+  `.firebase/emulator-data/auth_export/accounts.json`. Fix the fixture or enable
+  export-on-exit so deletions persist.
+- `[T08]` `unclaimed` — **Local dev pattern agent-browser can drive end-to-end.**
+  Signed-in UI is unreachable from agent-browser's headless Chrome:
+  `onAuthStateChanged` never fires there (works in a normal browser;
+  emulator/connectivity fine). Options: dev-only auth bypass/seeded session,
+  emulator REST state import, or a persistent pre-authed Chrome profile.
 
 ## Recently shipped
 
-- [x] **Regenerate + overwrite an existing submission.** "Regenerate" button on
-      a viewed submission re-streams the model and overwrites in place (same id)
-      via `PUT /api/answers/[id]` + `regenerateAnswer`: new `aiText`, `currentText`
-      reset to baseline, attribution recomputed.
-- [x] Vercel autodeploy on push to `main` — confirmed already git-connected;
-      latest push deployed to Production (Ready). Runtime still needs the two
-      secrets above before prod actually works.
-- [x] CLAUDE.md: noted it's OK to combine/dedupe/organize TODOS.md (vs. dropping).
-- [x] 8-bit robot mascot replaces SparklesIcon in sign-in card + header. (committed)
-- [x] Minimal workspace UI: removed hero copy + verbose card descriptions. (committed)
+- [x] `[T09]` Multi-agent locking protocol: stable `[T##]` ids + claim status on
+      TODOS.md, documented in AGENTS.md (git-as-lock claim/push flow).
+- [x] `[T01]` Regenerate + overwrite an existing submission in place (another
+      client): `PUT /api/answers/[id]` + `regenerateAnswer` re-streams the model,
+      replaces `aiText`, resets `currentText`, recomputes attribution; same id.
+- [x] Vercel autodeploy on push to `main` (git-connected); pushes deploy to Production.
+- [x] OPENAI_API_KEY + MONGODB_URI added to Vercel Production.
+- [x] CLAUDE.md: log every request before acting; OK to combine/dedupe/organize.
+- [x] 8-bit robot mascot replaces SparklesIcon in sign-in card + header.
+- [x] Minimal workspace UI: removed hero copy + verbose card descriptions.
 - [x] Removed the color-scheme picker; theme is always `system`.
 - [x] Submissions list + `GET /api/answers` / `listAnswers`; header "New" button.
 - [x] Delete submissions: `DELETE /api/answers/[id]` + `deleteAnswer` + row trash.
-- [x] Sign-in card minimalism: dropped the description and the
-      "Private preview for …" line.
-- [x] Removed the "Press ⌘/Ctrl + Enter" input hint under the question box.
-- [x] System prompt: if the query is ambiguous, interpret it as philosophical
-      and answer in thorough detail.
-- [x] Inline attribution: merged the Edit + Authorship areas into one editor
-      that highlights AI vs. user text on the field as you type
-      (`HighlightedEditor`).
-- [x] Switched local dev to REAL AI (`pnpm dev:local`, openai/gpt-5.5); mock off.
+- [x] Sign-in card minimalism: dropped the description and "Private preview" line.
+- [x] Removed the "Press ⌘/Ctrl + Enter" input hint.
+- [x] System prompt: ambiguous → interpret as philosophical, answer in detail.
+- [x] Inline attribution: merged Edit + Authorship into one `HighlightedEditor`
+      that highlights AI vs. user text on the field as you type.
+- [x] Switched local dev to REAL AI (`pnpm dev:local`, openai/gpt-5.5).
 - [x] Deleted the non-allowlisted account from the local Firebase Auth emulator.
 - [x] Confirmed the email allowlist is enforced server-side on every route.
-- [x] TODOS.md workflow: now committed (was briefly gitignored); AGENTS.md +
-      CLAUDE.md hardened so requests are always logged and never dropped.
 
 ## Ideas
 
-_(Unscheduled. Promote to Next when ready to act.)_
+_(Unscheduled. Promote to Now/Next with a fresh id when ready.)_
