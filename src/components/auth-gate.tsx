@@ -82,9 +82,8 @@ export function AuthGate() {
   }
 
   return (
-    <main className="relative flex min-h-screen items-center justify-center overflow-hidden px-6 py-16">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,oklch(0.7_0.14_260_/_0.16),transparent_45%)]" />
-      <Card className="relative w-full max-w-md shadow-2xl shadow-black/5">
+    <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-background px-6 py-16">
+      <Card className="relative w-full max-w-md">
         <CardHeader className="gap-4">
           <Image
             src="/robot-csv.png"

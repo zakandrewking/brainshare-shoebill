@@ -350,8 +350,8 @@ export function AnswerWorkspace({ user }: { user: User }) {
   }
 
   return (
-    <main className="min-h-screen bg-[radial-gradient(circle_at_top,oklch(0.7_0.13_260_/_0.1),transparent_38%)]">
-      <header className="sticky top-0 z-20 border-b bg-background/80 backdrop-blur-xl">
+    <main className="min-h-screen bg-background">
+      <header className="retro-raised sticky top-0 z-20 bg-background">
         <div className="mx-auto flex h-16 w-full max-w-6xl items-center gap-3 px-5 sm:px-6">
           <Image
             src="/robot-csv.png"
@@ -498,7 +498,7 @@ export function AnswerWorkspace({ user }: { user: User }) {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="min-h-40 rounded-xl border bg-background/70 p-5">
+              <div className="retro-sunken min-h-40 p-5">
                 <Streamdown isAnimating>{streamingText}</Streamdown>
               </div>
             </CardContent>
@@ -534,7 +534,7 @@ export function AnswerWorkspace({ user }: { user: User }) {
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="min-h-32 rounded-xl border bg-background/70 p-5">
+                <div className="retro-sunken min-h-32 p-5">
                   <Streamdown mode="static">{currentText}</Streamdown>
                 </div>
               </CardContent>

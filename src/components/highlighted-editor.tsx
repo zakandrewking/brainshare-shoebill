@@ -26,7 +26,7 @@ export function HighlightedEditor({
   return (
     <div
       className={cn(
-        "relative min-h-72 overflow-hidden rounded-xl border bg-background/70",
+        "retro-sunken relative min-h-72 overflow-hidden",
         className,
       )}
     >
