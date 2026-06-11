@@ -38,6 +38,7 @@ import {
 } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
 import { attributeText, attributionCounts } from "@/lib/attribution";
+import { resolveCrosslinks } from "@/lib/crosslinks";
 import { getFirebaseAuth } from "@/lib/firebase/client";
 import type { SerializedAnswer } from "@/lib/types";
 
@@ -84,6 +85,12 @@ export function AnswerWorkspace({ user }: { user: User }) {
   const segments = useMemo(
     () => (answer ? attributeText(answer.aiText, currentText) : []),
     [answer, currentText],
+  );
+  // Resolve [[Topic]] wiki-links against other submissions for the rendered
+  // view only; the editor keeps the raw text so edits stay authorable.
+  const renderedText = useMemo(
+    () => resolveCrosslinks(currentText, submissions, { excludeId: answer?.id }),
+    [currentText, submissions, answer?.id],
   );
   const counts = useMemo(() => attributionCounts(segments), [segments]);
   const userPercent =
@@ -535,7 +542,7 @@ export function AnswerWorkspace({ user }: { user: User }) {
               </CardHeader>
               <CardContent>
                 <div className="retro-sunken min-h-32 p-5">
-                  <Streamdown mode="static">{currentText}</Streamdown>
+                  <Streamdown mode="static">{renderedText}</Streamdown>
                 </div>
               </CardContent>
             </Card>

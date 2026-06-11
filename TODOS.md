@@ -17,12 +17,6 @@ _(Nothing actively in progress.)_
 
 ## Next
 
-- `[T05]` `wip:claude-opus-4.8/ae44@2026-06-11T06:11Z` — **Wikipedia-style
-  crosslinks between answers.** Approach chosen: model emits `[[Topic]]`
-  wiki-links; a pure `resolveCrosslinks(markdown, submissions)` util rewrites
-  `[[Topic]]` → `[Topic](?a=<id>)` for topics matching an existing submission
-  (normalized match), leaves others as plain text. Unit-tested; rendered answer
-  passes through it before Streamdown.
 - `[T06]` `unclaimed` — **Related-questions autocomplete dropdown (hybrid search).**
   As the user types, surface related prior questions via keyword + vector
   search. Needs infra decision: embeddings provider + vector store (Atlas Vector
@@ -44,6 +38,13 @@ _(Nothing actively in progress.)_
 
 ## Recently shipped
 
+- [x] `[T05]` Wikipedia-style crosslinks. Model emits `[[Topic]]` (system prompt
+      updated, used sparingly); pure unit-tested `resolveCrosslinks` rewrites
+      them to `[Label](?a=<id>)` when the topic matches another submission
+      (normalized exact or phrase match, excludes self), else plain text so raw
+      `[[ ]]` never leaks. Rendered answer passes through it before Streamdown;
+      editor keeps raw text. 8 tests; build green. Visual click-through needs a
+      signed-in review.
 - [x] `[T04]` Prod unblocked. Root cause of the all-routes 500 was
       `ERR_REQUIRE_ESM` (`firebase-admin@14 → jwks-rsa@4` require()s ESM-only
       `jose@6` on Vercel). Fixed by pinning `jwks-rsa>jose` to `4.15.9` (CJS) via
