@@ -16,10 +16,17 @@ commits) may be reclaimed. On completion, move the item to "Recently shipped".
 ## Now
 
 - `[T14]` `wip:claude-opus-4.8/9yf1@2026-06-11T06:29Z` — **Prod GitHub login is
-  still broken.** Sign-in at brainshare.io fails. Diagnose the GitHub OAuth /
-  Firebase Auth flow (authorized domains, OAuth callback URL, `authDomain`
-  client config, popup vs redirect) and fix what's in code; surface any
-  console/config step the user must do.
+  still broken.** CODE DONE (pushed): auth-gate now (a) surfaces the real
+  Firebase error code instead of a generic message, (b) falls back from
+  `signInWithPopup` to `signInWithRedirect` on popup/COOP failures, and (c)
+  handles `getRedirectResult` + allowlist on return. Root cause is almost
+  certainly CONFIG (can't see/change from here). USER CHECKLIST: 1) Firebase →
+  Authentication → Settings → **Authorized domains** must include `brainshare.io`
+  (and `www.`/the vercel.app domain). 2) GitHub OAuth App **callback URL** =
+  `https://brainshare-a67c5.firebaseapp.com/__/auth/handler`. 3) Vercel
+  `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN` = `brainshare-a67c5.firebaseapp.com` (NOT
+  brainshare.io). 4) GitHub provider enabled in Firebase Auth. THEN retry and
+  report the error code now shown in the toast — it pinpoints which of the above.
 
 ## Next
 

@@ -3,10 +3,14 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import {
+  getRedirectResult,
   onAuthStateChanged,
   signInWithPopup,
+  signInWithRedirect,
   signOut,
+  type Auth,
   type User,
+  type UserCredential,
 } from "firebase/auth";
 import { toast } from "sonner";
 
@@ -26,6 +30,48 @@ import {
 
 const allowedEmail = "zaking17@gmail.com";
 
+// Popup failures that warrant a full-page redirect retry instead (popups are
+// flaky on production — blockers, mobile, and Cross-Origin-Opener-Policy).
+const POPUP_FALLBACK_CODES = new Set([
+  "auth/popup-blocked",
+  "auth/cancelled-popup-request",
+  "auth/popup-closed-by-user",
+  "auth/operation-not-supported-in-environment",
+  "auth/web-storage-unsupported",
+]);
+
+// Turn a Firebase auth error into a message that names the real cause, so a
+// broken prod sign-in is diagnosable instead of a generic failure.
+function describeAuthError(error: unknown): string {
+  const code =
+    typeof error === "object" && error && "code" in error
+      ? String((error as { code?: unknown }).code)
+      : undefined;
+  switch (code) {
+    case "auth/unauthorized-domain":
+      return "This domain isn't authorized for sign-in. Add it in Firebase → Authentication → Settings → Authorized domains.";
+    case "auth/operation-not-allowed":
+      return "GitHub sign-in isn't enabled for this Firebase project.";
+    case "auth/account-exists-with-different-credential":
+      return "An account already exists with a different sign-in method.";
+    case "auth/network-request-failed":
+      return "Network error reaching Firebase. Check connectivity and try again.";
+    default:
+      return code
+        ? `GitHub sign-in failed (${code}).`
+        : "GitHub sign-in did not complete.";
+  }
+}
+
+// Enforce the email allowlist on the client (the server enforces it too).
+async function enforceAllowlist(auth: Auth, credential: UserCredential) {
+  const email = credential.user.email?.toLowerCase();
+  if (email !== allowedEmail) {
+    await signOut(auth);
+    toast.error(`Access is limited to ${allowedEmail}.`);
+  }
+}
+
 function GithubIcon() {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true" className="size-4 fill-current">
@@ -40,7 +86,20 @@ export function AuthGate() {
   const [signingIn, setSigningIn] = useState(false);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(getFirebaseAuth(), (nextUser) => {
+    const auth = getFirebaseAuth();
+    // Complete a redirect-based sign-in (used as a popup fallback) on return.
+    getRedirectResult(auth)
+      .then((result) => {
+        if (result) {
+          void enforceAllowlist(auth, result);
+        }
+      })
+      .catch((error) => {
+        console.error(error);
+        toast.error(describeAuthError(error));
+      });
+
+    const unsubscribe = onAuthStateChanged(auth, (nextUser) => {
       setUser(nextUser);
       setLoading(false);
     });
@@ -55,19 +114,30 @@ export function AuthGate() {
 
   async function handleSignIn() {
     setSigningIn(true);
+    const auth = getFirebaseAuth();
 
     try {
-      const auth = getFirebaseAuth();
       const result = await signInWithPopup(auth, getGithubProvider());
-      const email = result.user.email?.toLowerCase();
-
-      if (email !== allowedEmail) {
-        await signOut(auth);
-        toast.error(`Access is limited to ${allowedEmail}.`);
-      }
+      await enforceAllowlist(auth, result);
     } catch (error) {
       console.error(error);
-      toast.error("GitHub sign-in did not complete.");
+      const code =
+        typeof error === "object" && error && "code" in error
+          ? String((error as { code?: unknown }).code)
+          : undefined;
+
+      if (code && POPUP_FALLBACK_CODES.has(code)) {
+        // Retry with a full-page redirect; the result is handled on return.
+        try {
+          await signInWithRedirect(auth, getGithubProvider());
+          return;
+        } catch (redirectError) {
+          console.error(redirectError);
+          toast.error(describeAuthError(redirectError));
+        }
+      } else {
+        toast.error(describeAuthError(error));
+      }
     } finally {
       setSigningIn(false);
     }
