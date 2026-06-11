@@ -11,7 +11,7 @@ never just the model name. Claim an item by setting the status to your handle
 and committing+pushing *before* you start work. If your push is rejected,
 someone claimed first — pull and pick another. Stale claims (>30 min, no new
 commits) may be reclaimed. On completion, move the item to "Recently shipped".
-**Next free id: T13.**
+**Next free id: T14.**
 
 ## Now
 
@@ -19,10 +19,10 @@ _(Nothing actively in progress.)_
 
 ## Next
 
-- `[T06]` `unclaimed` — **Related-questions autocomplete dropdown (hybrid search).**
-  As the user types, surface related prior questions via keyword + vector
-  search. Needs infra decision: embeddings provider + vector store (Atlas Vector
-  Search?).
+- `[T06]` `wip:claude-opus-4.8/9yf1@2026-06-11T06:19Z` — **Related-questions
+  autocomplete dropdown.** As the user types, surface related prior questions.
+  Shipping the keyword half first (no infra: ranks the already-loaded
+  submissions client-side); vector/hybrid search deferred to T13.
 - `[T07]` `unclaimed` — **Emulator re-imports deleted accounts on restart.** Each
   restart re-imports `panda.algae.992@example.com` from
   `.firebase/emulator-data/auth_export/accounts.json`. Fix the fixture or enable
@@ -32,6 +32,10 @@ _(Nothing actively in progress.)_
   `onAuthStateChanged` never fires there (works in a normal browser;
   emulator/connectivity fine). Options: dev-only auth bypass/seeded session,
   emulator REST state import, or a persistent pre-authed Chrome profile.
+- `[T13]` `unclaimed` — **Related-questions: vector/hybrid ranking (T06 follow-up).**
+  Upgrade the keyword dropdown to hybrid search. Needs an infra decision
+  (embeddings provider + vector store — Atlas Vector Search?), likely a server
+  endpoint that embeds the query and ANN-searches stored question embeddings.
 
 ## Recently shipped
 
