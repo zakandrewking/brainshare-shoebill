@@ -13,7 +13,7 @@ move the item to "Recently shipped". **Next free id: T10.**
 
 ## Now
 
-- `[T03]` `unclaimed` — **Retro restyle: minimalism / Windows 95 / classic Mac OS.**
+- `[T03]` `wip:claude-opus-4.8@2026-06-11T05:59Z` — **Retro restyle: minimalism / Windows 95 / classic Mac OS.**
   Squared corners, classic gray chrome/bevels, system/pixel font, flatten
   gradients. Pairs with the 8-bit mascot. Building blind (agent-browser can't
   reach the signed-in UI); user reviews live.
