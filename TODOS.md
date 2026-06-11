@@ -9,7 +9,7 @@ and push changes so alternative clients can coordinate. See `AGENTS.md` →
 setting the status to your agent handle and committing+pushing *before* you
 start work. If your push is rejected, someone claimed first — pull and pick
 another. Stale claims (>30 min, no new commits) may be reclaimed. On completion,
-move the item to "Recently shipped". **Next free id: T12.**
+move the item to "Recently shipped". **Next free id: T13.**
 
 ## Now
 
@@ -38,6 +38,10 @@ _(Nothing actively in progress.)_
 
 ## Recently shipped
 
+- [x] `[T12]` AGENTS.md: added an explicit rule that ALL feedback (corrections,
+      reactions, "oops" notes, preferences, offhand remarks) is captured in
+      TODOS.md first — not just explicit asks — and reactions to shipped work
+      become new items before replying.
 - [x] `[T11]` Splash robot mascot enlarged from `size-16` (64px) to `size-32`
       (128px) on the sign-in card; kept pixelated rendering.
 - [x] `[T05]` Wikipedia-style crosslinks. Model emits `[[Topic]]` (system prompt

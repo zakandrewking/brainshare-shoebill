@@ -32,6 +32,14 @@ not retain a task list on their own.
   quick, or one-line requests, mid-task interruptions, and asks that arrive
   while you are working on something else. Never let a request go unrecorded;
   if several land at once, add them all. Missing a request is a process failure.
+- **ALL feedback is a request — capture it too.** "Feedback" is not limited to
+  explicit "please do X" asks. It includes corrections ("that's wrong"),
+  reactions ("hmm, too big"), regrets/"oops" notes, stated preferences, offhand
+  remarks, "next time…" wishes, and anything that implies work or a change of
+  direction — even if phrased as a comment rather than a command. When in doubt,
+  log it. If the user reacts to something you just shipped, that reaction is a
+  new `TODOS.md` item (in **Next** or **Ideas** unless they want it now), logged
+  before you respond — do not let it live only in chat.
 - Also capture every idea, follow-up, or blocker you discover while working.
 - **Keep it live during the dev loop.** As you work, continuously update it:
   add new items the moment they come up, mark items in progress, and check off
