@@ -13,10 +13,7 @@ move the item to "Recently shipped". **Next free id: T11.**
 
 ## Now
 
-- `[T03]` `wip:claude-opus-4.8@2026-06-11T05:59Z` — **Retro restyle: minimalism / Windows 95 / classic Mac OS.**
-  Squared corners, classic gray chrome/bevels, system/pixel font, flatten
-  gradients. Pairs with the 8-bit mascot. Building blind (agent-browser can't
-  reach the signed-in UI); user reviews live.
+_(Nothing actively in progress.)_
 
 ## Next
 
@@ -55,6 +52,12 @@ move the item to "Recently shipped". **Next free id: T11.**
 
 ## Recently shipped
 
+- [x] `[T03]` Retro restyle (Win95 / classic Mac chrome): `--radius: 0`, silver
+      palette + dark "graphite" variant, centralized raised/sunken bevel system
+      in `globals.css` (unlayered `--raise`/`--sink` keyed off `data-slot`),
+      classic system font stack, flattened the radial gradients, navy text
+      selection. Inner reading/editor panels are white sunken wells. Build green;
+      needs live visual review (built blind — agent-browser can't reach signed-in UI).
 - [x] `[T02]` Rework submissions UI: moved the list into a slide-out Sheet (new
       `ui/sheet.tsx` on Base UI Dialog), opened from a header "Submissions"
       button with a count badge. Open answer is addressable via `?a=<id>` synced
