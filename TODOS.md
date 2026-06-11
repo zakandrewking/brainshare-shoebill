@@ -9,7 +9,7 @@ and push changes so alternative clients can coordinate. See `AGENTS.md` →
 setting the status to your agent handle and committing+pushing *before* you
 start work. If your push is rejected, someone claimed first — pull and pick
 another. Stale claims (>30 min, no new commits) may be reclaimed. On completion,
-move the item to "Recently shipped". **Next free id: T10.**
+move the item to "Recently shipped". **Next free id: T11.**
 
 ## Now
 
@@ -47,6 +47,11 @@ move the item to "Recently shipped". **Next free id: T10.**
   `onAuthStateChanged` never fires there (works in a normal browser;
   emulator/connectivity fine). Options: dev-only auth bypass/seeded session,
   emulator REST state import, or a persistent pre-authed Chrome profile.
+- `[T10]` `unclaimed` — **Locking handles must be unique per agent instance.**
+  Two concurrent clients both claimed items as `claude-opus-4.8` (the model
+  name), so claims can't be told apart and stale-claim takeover is ambiguous.
+  Update the protocol to use a unique instance/session id (e.g.
+  `claude-opus-4.8/<short-session>`), and document it in AGENTS.md.
 
 ## Recently shipped
 
