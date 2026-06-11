@@ -31,7 +31,9 @@ not retain a task list on their own.
 - Sections: **Now** (actively in progress), **Next** (ready to pick up), and
   **Ideas** (unscheduled; promote to Next when ready). Keep entries concrete
   and verifiable.
-- `TODOS.md` is a local working file and is **gitignored — never commit it.**
+- `TODOS.md` is **committed** — keep it up to date and commit/push changes so
+  alternative clients can pick up and improve the work. When editing it, never
+  drop an item: move finished work to "Recently shipped" rather than deleting.
 - This is the coarse, human-readable backlog. Use the in-session task tool for
   fine-grained, ephemeral steps within a single task.
 
