@@ -40,10 +40,17 @@ export function AuthGate() {
   const [signingIn, setSigningIn] = useState(false);
 
   useEffect(() => {
-    return onAuthStateChanged(getFirebaseAuth(), (nextUser) => {
+    const unsubscribe = onAuthStateChanged(getFirebaseAuth(), (nextUser) => {
       setUser(nextUser);
       setLoading(false);
     });
+    // Never hang on the splash: if auth initialization stalls, fall back to the
+    // signed-out view after a few seconds so sign-in stays reachable.
+    const timeout = setTimeout(() => setLoading(false), 6000);
+    return () => {
+      unsubscribe();
+      clearTimeout(timeout);
+    };
   }, []);
 
   async function handleSignIn() {
