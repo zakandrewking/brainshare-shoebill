@@ -1,10 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import { signOut, type User } from "firebase/auth";
 import {
   CheckIcon,
+  LayersIcon,
   LoaderCircleIcon,
   LogOutIcon,
   PlusIcon,
@@ -28,6 +29,13 @@ import {
 } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
 import { attributeText, attributionCounts } from "@/lib/attribution";
 import { getFirebaseAuth } from "@/lib/firebase/client";
@@ -68,6 +76,10 @@ export function AnswerWorkspace({ user }: { user: User }) {
   const [isSaving, setIsSaving] = useState(false);
   const [isSaved, setIsSaved] = useState(true);
   const [submissions, setSubmissions] = useState<SerializedAnswer[]>([]);
+  const [sheetOpen, setSheetOpen] = useState(false);
+  // Mirror submissions for the popstate handler, which reads the latest list
+  // without re-subscribing on every change.
+  const submissionsRef = useRef<SerializedAnswer[]>([]);
 
   const segments = useMemo(
     () => (answer ? attributeText(answer.aiText, currentText) : []),
@@ -82,37 +94,75 @@ export function AnswerWorkspace({ user }: { user: User }) {
   const loadSubmissions = useCallback(async () => {
     try {
       const response = await authenticatedFetch(user, "/api/answers");
-      if (!response.ok) return;
+      if (!response.ok) return [];
       const body = (await response.json()) as {
         answers: SerializedAnswer[];
       };
+      submissionsRef.current = body.answers;
       setSubmissions(body.answers);
+      return body.answers;
     } catch (error) {
       console.error(error);
+      return [];
     }
   }, [user]);
 
-  useEffect(() => {
-    // Mount fetch: setSubmissions runs after an await, not synchronously,
-    // so there is no cascading-render risk the rule guards against.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    void loadSubmissions();
-  }, [loadSubmissions]);
-
-  function openSubmission(submission: SerializedAnswer) {
+  // Load only the submission state (no URL navigation). Used when reconciling
+  // the open answer with the `?a=<id>` param on mount and on back/forward.
+  const selectSubmission = useCallback((submission: SerializedAnswer | null) => {
     setAnswer(submission);
-    setCurrentText(submission.currentText);
-    setQuestion(submission.question);
+    setCurrentText(submission?.currentText ?? "");
+    setQuestion(submission?.question ?? "");
     setStreamingText("");
     setIsSaved(true);
+  }, []);
+
+  // Read `?a=<id>` and open the matching submission (or reset to a blank
+  // workspace if absent/unknown). Reads the latest list from the ref so it can
+  // run as a stable popstate listener.
+  const applyUrlState = useCallback(() => {
+    const id = new URLSearchParams(window.location.search).get("a");
+    const found = id
+      ? submissionsRef.current.find((submission) => submission.id === id)
+      : undefined;
+    selectSubmission(found ?? null);
+  }, [selectSubmission]);
+
+  useEffect(() => {
+    void (async () => {
+      await loadSubmissions();
+      // Reconcile after the list resolves so a deep link can open its answer.
+      applyUrlState();
+    })();
+  }, [loadSubmissions, applyUrlState]);
+
+  useEffect(() => {
+    window.addEventListener("popstate", applyUrlState);
+    return () => window.removeEventListener("popstate", applyUrlState);
+  }, [applyUrlState]);
+
+  // Reflect the open answer in the URL as `?a=<id>` so it is addressable and
+  // shareable, and so browser back/forward move between answers.
+  function pushAnswerUrl(id: string | null) {
+    const url = new URL(window.location.href);
+    if (id) {
+      url.searchParams.set("a", id);
+    } else {
+      url.searchParams.delete("a");
+    }
+    window.history.pushState(null, "", url);
+  }
+
+  function openSubmission(submission: SerializedAnswer) {
+    selectSubmission(submission);
+    pushAnswerUrl(submission.id);
+    setSheetOpen(false);
   }
 
   function startNew() {
-    setAnswer(null);
-    setQuestion("");
-    setCurrentText("");
-    setStreamingText("");
-    setIsSaved(true);
+    selectSubmission(null);
+    pushAnswerUrl(null);
+    setSheetOpen(false);
   }
 
   async function deleteSubmission(id: string) {
@@ -204,6 +254,7 @@ export function AnswerWorkspace({ user }: { user: User }) {
       setCurrentText(body.answer.currentText);
       setStreamingText("");
       setIsSaved(true);
+      pushAnswerUrl(body.answer.id);
       void loadSubmissions();
     } catch (error) {
       console.error(error);
@@ -313,6 +364,19 @@ export function AnswerWorkspace({ user }: { user: User }) {
           />
           <span className="font-semibold tracking-tight">Brainshare</span>
           <div className="ml-auto flex items-center gap-1.5">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setSheetOpen(true)}
+            >
+              <LayersIcon />
+              Submissions
+              {submissions.length > 0 ? (
+                <Badge variant="secondary" className="ml-0.5 px-1.5">
+                  {submissions.length}
+                </Badge>
+              ) : null}
+            </Button>
             <Button variant="outline" size="sm" onClick={startNew}>
               <PlusIcon />
               New
@@ -336,6 +400,57 @@ export function AnswerWorkspace({ user }: { user: User }) {
           </div>
         </div>
       </header>
+
+      <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+        <SheetContent>
+          <SheetHeader>
+            <SheetTitle>Submissions</SheetTitle>
+            <SheetDescription>
+              Open a saved answer or start a new one.
+            </SheetDescription>
+          </SheetHeader>
+          {submissions.length > 0 ? (
+            <div className="-mx-1 flex-1 space-y-1 overflow-y-auto px-1">
+              {submissions.map((submission) => (
+                <div
+                  key={submission.id}
+                  className={`flex items-center gap-1 rounded-lg border pr-1 transition-colors hover:bg-muted/60 ${
+                    answer?.id === submission.id
+                      ? "border-primary bg-muted/40"
+                      : "border-transparent"
+                  }`}
+                >
+                  <button
+                    type="button"
+                    onClick={() => openSubmission(submission)}
+                    className="flex min-w-0 flex-1 flex-col items-start gap-0.5 px-3 py-2 text-left"
+                  >
+                    <span className="line-clamp-2 w-full text-sm font-medium">
+                      {submission.question}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {new Date(submission.updatedAt).toLocaleString()}
+                    </span>
+                  </button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label="Delete submission"
+                    onClick={() => deleteSubmission(submission.id)}
+                  >
+                    <Trash2Icon />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="flex flex-1 flex-col items-center justify-center gap-1 text-center text-sm text-muted-foreground">
+              <p>No submissions yet.</p>
+              <p>Ask a question to create your first one.</p>
+            </div>
+          )}
+        </SheetContent>
+      </Sheet>
 
       <div className="mx-auto w-full max-w-6xl space-y-6 px-5 py-8 sm:px-6 sm:py-12">
         <Card>
@@ -371,47 +486,6 @@ export function AnswerWorkspace({ user }: { user: User }) {
             </div>
           </CardContent>
         </Card>
-
-        {submissions.length > 0 ? (
-          <Card>
-            <CardHeader>
-              <CardTitle>Submissions</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-1">
-              {submissions.map((submission) => (
-                <div
-                  key={submission.id}
-                  className={`flex items-center gap-1 rounded-lg border pr-1 transition-colors hover:bg-muted/60 ${
-                    answer?.id === submission.id
-                      ? "border-primary bg-muted/40"
-                      : "border-transparent"
-                  }`}
-                >
-                  <button
-                    type="button"
-                    onClick={() => openSubmission(submission)}
-                    className="flex min-w-0 flex-1 flex-col items-start gap-0.5 px-3 py-2 text-left"
-                  >
-                    <span className="line-clamp-1 w-full text-sm font-medium">
-                      {submission.question}
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      {new Date(submission.updatedAt).toLocaleString()}
-                    </span>
-                  </button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    aria-label="Delete submission"
-                    onClick={() => deleteSubmission(submission.id)}
-                  >
-                    <Trash2Icon />
-                  </Button>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        ) : null}
 
         {isGenerating || isRegenerating ? (
           <Card>

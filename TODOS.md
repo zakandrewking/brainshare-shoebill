@@ -7,10 +7,6 @@ and never drop an item — move finished work to "Recently shipped".
 
 ## Now
 
-- [ ] **Rework submissions UI: open via a button + per-submission URLs.** Move
-      the submissions list off the main page behind a button (panel/sheet or
-      dedicated view). Give each submission a real URL (route `/a/[id]` or
-      `?a=<id>`) so answers are addressable/shareable. Foundational for crosslinks.
 - [ ] **Retro restyle: minimalism / Windows 95 / classic Mac OS.** Another pass
       on the look — squared corners, classic gray chrome/bevels, system/pixel
       font, flatten gradients. Pairs with the 8-bit mascot. Building blind
@@ -48,6 +44,11 @@ and never drop an item — move finished work to "Recently shipped".
 
 ## Recently shipped
 
+- [x] **Rework submissions UI: open via a button + per-submission URLs.** Moved
+      the list into a slide-out Sheet (new `ui/sheet.tsx` on Base UI Dialog),
+      opened from a header "Submissions" button with a count badge. Each open
+      answer is addressable via `?a=<id>` synced with the History API (deep
+      links + back/forward; `/` stays statically rendered, no Suspense bailout).
 - [x] **Regenerate + overwrite an existing submission.** "Regenerate" button on
       a viewed submission re-streams the model and overwrites in place (same id)
       via `PUT /api/answers/[id]` + `regenerateAnswer`: new `aiText`, `currentText`
