@@ -11,10 +11,13 @@ never just the model name. Claim an item by setting the status to your handle
 and committing+pushing *before* you start work. If your push is rejected,
 someone claimed first — pull and pick another. Stale claims (>30 min, no new
 commits) may be reclaimed. On completion, move the item to "Recently shipped".
-**Next free id: T23.**
+**Next free id: T24.**
 
 ## Now
 
+- `[T23]` `wip:claude-opus-4.8/a111@2026-06-12T00:47Z` — **Check Vercel prod logs
+  for errors + document the procedure in AGENTS.md** so future sessions know how
+  to pull Vercel logs (CLI, token env var, project link).
 - `[T14]` `wip:claude-opus-4.8/ae44@2026-06-11T15:28Z` (taken over from 9yf1, user-directed) — **Prod GitHub login is
   still broken.** CODE DONE (pushed): auth-gate now (a) surfaces the real
   Firebase error code instead of a generic message, (b) falls back from
