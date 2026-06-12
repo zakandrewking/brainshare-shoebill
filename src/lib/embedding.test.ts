@@ -4,6 +4,7 @@ import {
   EMBEDDING_DIMENSIONS,
   embedQuestions,
   getEmbeddingConfig,
+  matchTopics,
   mockEmbedding,
 } from "@/lib/embedding";
 
@@ -63,5 +64,46 @@ describe("embedding config and dispatch", () => {
     expect(getEmbeddingConfig().model).toBe(
       `mock/deterministic@${EMBEDDING_DIMENSIONS}`,
     );
+  });
+});
+
+describe("matchTopics", () => {
+  const candidates = [
+    {
+      id: "kind",
+      question: "what is kindness?",
+      embedding: mockEmbedding("what is kindness?"),
+    },
+    {
+      id: "markets",
+      question: "how do markets allocate capital?",
+      embedding: mockEmbedding("how do markets allocate capital?"),
+    },
+    { id: "no-vector", question: "unembedded", embedding: null },
+  ];
+
+  it("links a topic to the most similar question above the threshold", () => {
+    const topics = ["kindness"];
+    const matches = matchTopics(
+      topics,
+      topics.map(mockEmbedding),
+      candidates,
+    );
+    expect(matches).toEqual({
+      kindness: { id: "kind", question: "what is kindness?" },
+    });
+  });
+
+  it("omits topics whose best candidate scores under the threshold", () => {
+    const topics = ["photosynthesis"];
+    const matches = matchTopics(topics, topics.map(mockEmbedding), candidates);
+    expect(matches).toEqual({});
+  });
+
+  it("skips candidates without embeddings instead of failing", () => {
+    const topics = ["unembedded"];
+    expect(
+      matchTopics(topics, topics.map(mockEmbedding), candidates),
+    ).toEqual({});
   });
 });

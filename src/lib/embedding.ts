@@ -1,5 +1,5 @@
 import { openai } from "@ai-sdk/openai";
-import { embedMany } from "ai";
+import { cosineSimilarity, embedMany } from "ai";
 
 // Server-side question embeddings for related-question ranking. The corpus is
 // tiny and single-user, so vectors live on the answer documents and similarity
@@ -82,4 +82,49 @@ export async function embedQuestions(
     },
   });
   return embeddings;
+}
+
+// Below this cosine, a [[topic]] is not considered semantically the same
+// entry as a question — short topic strings against short questions score
+// lower than question-to-question pairs, hence laxer than ranking floors.
+export const SEMANTIC_LINK_THRESHOLD = 0.4;
+
+export type SemanticMatch = { id: string; question: string };
+
+/**
+ * Match each topic to the most similar candidate question by embedding
+ * cosine, keyed by the topic as given. Topics whose best candidate scores
+ * under `threshold` are omitted. Pure: embeddings are computed by the caller
+ * and `topicEmbeddings[i]` must correspond to `topics[i]`.
+ */
+export function matchTopics(
+  topics: string[],
+  topicEmbeddings: number[][],
+  candidates: { id: string; question: string; embedding: number[] | null }[],
+  threshold = SEMANTIC_LINK_THRESHOLD,
+): Record<string, SemanticMatch> {
+  const matches: Record<string, SemanticMatch> = {};
+  topics.forEach((topic, index) => {
+    const topicEmbedding = topicEmbeddings[index];
+    if (!topicEmbedding) {
+      return;
+    }
+    let best: { candidate: SemanticMatch; score: number } | null = null;
+    for (const candidate of candidates) {
+      if (!candidate.embedding) {
+        continue;
+      }
+      const score = cosineSimilarity(topicEmbedding, candidate.embedding);
+      if (score >= threshold && (!best || score > best.score)) {
+        best = {
+          candidate: { id: candidate.id, question: candidate.question },
+          score,
+        };
+      }
+    }
+    if (best) {
+      matches[topic] = best.candidate;
+    }
+  });
+  return matches;
 }

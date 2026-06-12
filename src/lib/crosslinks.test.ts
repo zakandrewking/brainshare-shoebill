@@ -57,8 +57,8 @@ describe("findCrosslinkRanges", () => {
   it("reports token offsets, resolution, and target against submissions", () => {
     const text = "See [[entropy]] and [[qualia]].";
     expect(findCrosslinkRanges(text, subs)).toEqual([
-      { start: 4, end: 15, resolved: true, targetId: "a1" },
-      { start: 20, end: 30, resolved: false },
+      { start: 4, end: 15, target: "entropy", resolved: true, targetId: "a1" },
+      { start: 20, end: 30, target: "qualia", resolved: false },
     ]);
   });
 
@@ -70,6 +70,20 @@ describe("findCrosslinkRanges", () => {
       findCrosslinkRanges("[[entropy]]", subs, { excludeId: "a1" })[0]
         ?.resolved,
     ).toBe(false);
+  });
+
+  it("falls back to the semantic map when lexical matching fails", () => {
+    const ranges = findCrosslinkRanges("[[Qualia?]]", subs, {
+      semantic: { qualia: "a2" },
+    });
+    expect(ranges[0]).toMatchObject({ resolved: true, targetId: "a2" });
+  });
+
+  it("prefers a lexical match over a semantic one", () => {
+    const ranges = findCrosslinkRanges("[[entropy]]", subs, {
+      semantic: { entropy: "a2" },
+    });
+    expect(ranges[0]?.targetId).toBe("a1");
   });
 
   it("returns nothing for text without wiki-links", () => {

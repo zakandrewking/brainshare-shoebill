@@ -40,7 +40,7 @@ import {
 } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
 import { attributeText, attributionCounts } from "@/lib/attribution";
-import { findCrosslinkRanges } from "@/lib/crosslinks";
+import { findCrosslinkRanges, normalizeTopic } from "@/lib/crosslinks";
 import { findRelatedQuestions } from "@/lib/related";
 import { getFirebaseAuth } from "@/lib/firebase/client";
 import type { SerializedAnswer } from "@/lib/types";
@@ -191,12 +191,72 @@ export function AnswerWorkspace({ user }: { user: User }) {
     () => (answer ? attributeText(answer.aiText, currentText) : []),
     [answer, currentText],
   );
+  // Semantic [[topic]] resolutions from /api/crosslinks: normalized topic →
+  // submission id. The cache also remembers misses (null) so each topic is
+  // looked up at most once per session.
+  const [semanticLinks, setSemanticLinks] = useState<Record<string, string>>(
+    {},
+  );
+  const semanticCacheRef = useRef(new Map<string, string | null>());
+
   // Raw [[topic]] ranges, recomputed per keystroke (pure, client-side) so the
   // editor can show a link resolving the moment it matches a submission.
-  const crosslinkRanges = useMemo(
-    () => findCrosslinkRanges(currentText, submissions, { excludeId: answer?.id }),
-    [currentText, submissions, answer?.id],
-  );
+  // Lexical matches are instant; semantic ones light up when the lookup lands.
+  const crosslinkRanges = useMemo(() => {
+    // Never let a cached semantic match link an answer to itself.
+    const semantic = Object.fromEntries(
+      Object.entries(semanticLinks).filter(([, id]) => id !== answer?.id),
+    );
+    return findCrosslinkRanges(currentText, submissions, {
+      excludeId: answer?.id,
+      semantic,
+    });
+  }, [currentText, submissions, answer?.id, semanticLinks]);
+
+  // Look up topics that didn't resolve lexically, debounced while typing.
+  useEffect(() => {
+    const pending = [
+      ...new Set(
+        crosslinkRanges
+          .filter((range) => !range.resolved)
+          .map((range) => range.target)
+          .filter(
+            (target) => !semanticCacheRef.current.has(normalizeTopic(target)),
+          ),
+      ),
+    ].slice(0, 20);
+    if (pending.length === 0) {
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      try {
+        const response = await authenticatedFetch(user, "/api/crosslinks", {
+          method: "POST",
+          body: JSON.stringify({ topics: pending, excludeId: answer?.id }),
+        });
+        if (!response.ok) return;
+        const body = (await response.json()) as {
+          matches: Record<string, { id: string }>;
+        };
+        for (const topic of pending) {
+          semanticCacheRef.current.set(
+            normalizeTopic(topic),
+            body.matches[topic]?.id ?? null,
+          );
+        }
+        const next: Record<string, string> = {};
+        for (const [key, id] of semanticCacheRef.current) {
+          if (id) next[key] = id;
+        }
+        setSemanticLinks(next);
+      } catch (error) {
+        // Semantic resolution is an enhancement; lexical links still work.
+        console.error(error);
+      }
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [crosslinkRanges, answer?.id, user]);
   const counts = useMemo(() => attributionCounts(segments), [segments]);
   const userPercent =
     counts.ai + counts.user

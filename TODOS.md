@@ -15,14 +15,7 @@ commits) may be reclaimed. On completion, move the item to "Recently shipped".
 
 ## Now
 
-- `[T40]` `wip:claude-fable-5/q3x8@2026-06-12T03:15Z` — **Semantic `[[topic]]`
-  resolution.** When a model-emitted `[[topic]]` doesn't match any question
-  lexically, resolve it by embedding similarity (new endpoint reusing the
-  stored question embeddings; client merges results into the live crosslink
-  decorations, cached per topic). Keeps the instant lexical path; semantic
-  matches light up when the lookup lands. Context (T39 diagnosis): every prod
-  answer DOES carry `[[tokens]]` (ethics, empathy, consciousness, subjective
-  experience…) but none match a question lexically, so nothing ever linked.
+_(empty — claim the first actionable item in Next/Ideas)_
 
 ## Next
 
@@ -30,6 +23,17 @@ _(empty — promote from Ideas when ready)_
 
 ## Recently shipped
 
+- [x] `[T40]` **Semantic `[[topic]]` resolution.** New `POST /api/crosslinks`
+      embeds unresolved topics (batched with candidate backfill via the
+      shared `embedWithCandidates` helper, now also used by `/api/related`)
+      and matches them to stored question embeddings with pure `matchTopics`
+      (cosine ≥ 0.4, best candidate wins). `findCrosslinkRanges` gains a
+      `semantic` map option (normalized topic → id; lexical match wins) and
+      reports each range's raw `target`; the workspace looks up unresolved
+      topics debounced (400 ms), caches hits AND misses per session, guards
+      against self-links, and the editor decorations light up when results
+      land. T39 root cause closed: `[[empathy]]`/`[[consciousness]]`-style
+      tokens now link semantically. 5 new tests (55 total).
 - [x] `[T37]`+`[T38]`+`[T39]` **CodeMirror live markdown surface; persistent
       Thinking; automatic Related links.** The answer card is now ONE
       always-editable CodeMirror 6 markdown editor (live heading/bold/italic/
