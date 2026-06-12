@@ -15,10 +15,7 @@ commits) may be reclaimed. On completion, move the item to "Recently shipped".
 
 ## Now
 
-- `[T31]` `wip:claude-fable-5/q3x8@2026-06-12T02:36Z` — **Default the
-  streaming "Thinking" panel to collapsed.** The reasoning `<details>` box in
-  the generating card currently renders with `open`; drop it so the summary
-  row shows and the user expands it on demand.
+_(empty — claim the first actionable item in Next/Ideas)_
 
 ## Next
 
@@ -26,6 +23,9 @@ _(empty — promote from Ideas when ready)_
 
 ## Recently shipped
 
+- [x] `[T31]` Streaming "Thinking" panel now defaults to collapsed (removed
+      `open` from the reasoning `<details>`); the card header still shows the
+      "Thinking…" state, and the panel expands on demand.
 - [x] `[T30]` Related-questions suggestions no longer cover the "Generate
       answer" button: the panel renders in normal flow under the textarea
       (pushing the button down) instead of as an absolute overlay.

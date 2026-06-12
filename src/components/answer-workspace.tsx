@@ -657,7 +657,7 @@ export function AnswerWorkspace({ user }: { user: User }) {
             </CardHeader>
             <CardContent className="space-y-3">
               {streamingReasoning ? (
-                <details open className="retro-sunken p-3 text-sm">
+                <details className="retro-sunken p-3 text-sm">
                   <summary className="cursor-pointer font-medium text-muted-foreground">
                     Thinking
                   </summary>
