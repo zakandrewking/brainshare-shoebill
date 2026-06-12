@@ -11,38 +11,27 @@ never just the model name. Claim an item by setting the status to your handle
 and committing+pushing *before* you start work. If your push is rejected,
 someone claimed first — pull and pick another. Stale claims (>30 min, no new
 commits) may be reclaimed. On completion, move the item to "Recently shipped".
-**Next free id: T34.**
+**Next free id: T37.**
 
 ## Now
 
-- `[T25]` `wip:claude-opus-4.8/a111@2026-06-12T00:47Z` — **PROD BROKEN: MongoDB
-  `bad auth`.** Vercel prod logs show `/api/answers` GET+POST returning 500 with
-  `MongoServerError: bad auth : Authentication failed` (Atlas code 8000,
-  HandshakeError) — recurring through 2026-06-12T00:48Z. The `MONGODB_URI`
-  credentials in Vercel Production are being rejected by Atlas (wrong/rotated
-  DB-user password, or a user that doesn't exist on this cluster). Confirmed
-  Firebase auth passes BEFORE the DB call in `route.ts`, so login works — this is
-  purely the data layer (separate from T14). User prefers raw CLI commands (no
-  helper script). FIX (needs correct secret — user): test a candidate URI with
-  `mongosh "<uri>" --eval 'db.runCommand({ping:1})'`, fix the DB user/password in
-  Atlas → Database Access, then re-set `MONGODB_URI` in Vercel Production
-  (`vercel env rm MONGODB_URI production` + `vercel env add MONGODB_URI
-  production`) and redeploy (`vercel --prod` or `vercel redeploy <url>`).
-- `[T14]` `wip:claude-opus-4.8/ae44@2026-06-11T15:28Z` (taken over from 9yf1, user-directed) — **Prod GitHub login is
-  still broken.** CODE DONE (pushed): auth-gate now (a) surfaces the real
-  Firebase error code instead of a generic message, (b) falls back from
-  `signInWithPopup` to `signInWithRedirect` on popup/COOP failures, and (c)
-  handles `getRedirectResult` + allowlist on return. Root cause is almost
-  certainly CONFIG (can't see/change from here). USER CHECKLIST: 1) Firebase →
-  Authentication → Settings → **Authorized domains** must include `brainshare.io`
-  (and `www.`/the vercel.app domain). 2) GitHub OAuth App **callback URL** =
-  `https://brainshare-a67c5.firebaseapp.com/__/auth/handler`. 3) Vercel
-  `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN` = `brainshare-a67c5.firebaseapp.com` (NOT
-  brainshare.io). 4) GitHub provider enabled in Firebase Auth. THEN retry and
-  report the error code now shown in the toast — it pinpoints which of the above.
+_(Nothing in progress — user paused work on 2026-06-12. Top priority when
+resuming: T35 (merge the feature branch to main).)_
 
 ## Next
 
+- `[T35]` `unclaimed` — **Merge `claude/happy-edison-a111cb` → `main` and push**
+  (deploys to prod). The branch holds the full 2026-06-12 batch: single
+  live-markdown answer box (T26/T27/T30/T31/T32), Enter-to-submit (T28), 90s
+  fonts (T29), deploy reload prompt (T33), citation links in the system prompt
+  (T34), AGENTS.md Vercel-logs docs (T23). `pnpm verify` green at b04be74+T34;
+  user paused before merge ("stop"), so the merge wasn't pushed. The big editor
+  rework hasn't had a live signed-in visual check — sanity-check the editor on
+  prod right after deploying (prod data layer is healthy again per T25).
+- `[T36]` `unclaimed` — **Make citation/markdown links clickable in the live
+  editor (T34 follow-up).** The CM6 editor styles `[label](url)` links but only
+  `[[crosslinks]]` are click-wired; external citation links should open (new
+  tab; consider Obsidian-style Cmd/Ctrl+click so plain click still edits).
 - `[T13]` `unclaimed` — **Related-questions: vector/hybrid ranking (T06 follow-up).**
   Upgrade the keyword dropdown to hybrid search. Needs an infra decision
   (embeddings provider + vector store — Atlas Vector Search?), likely a server
@@ -50,6 +39,19 @@ commits) may be reclaimed. On completion, move the item to "Recently shipped".
 
 ## Recently shipped
 
+- [x] `[T34]` System prompt now asks for inline citation links: when drawing on
+      a specific thinker/work/theory/finding, cite it as a markdown link to a
+      stable source (Wikipedia / SEP / original publication), never inventing
+      URLs. `pnpm verify` green. Follow-up: T36 (links not yet clickable in the
+      live editor).
+- [x] `[T25]` Prod MongoDB `bad auth` RESOLVED — user fixed the Atlas
+      credentials/`MONGODB_URI`; confirmed live (deep link
+      `brainshare.io/?a=<id>` loads a saved answer). Diagnosis + CLI runbook
+      preserved in this entry's history and AGENTS.md.
+- [x] `[T14]` Prod GitHub login RESOLVED — user is signed in on brainshare.io
+      and reading saved answers (config fix on the Firebase/GitHub side; code
+      hardening was already pushed: real error codes surfaced + popup→redirect
+      fallback).
 - [x] `[T33]` Auto-reload prompt on new deploy. New `GET /api/version`
       (force-dynamic, no-store) returns `VERCEL_DEPLOYMENT_ID` (falls back to the
       commit SHA, "dev" locally). New `DeployWatcher` (mounted in app-providers)
