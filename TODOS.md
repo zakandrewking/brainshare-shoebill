@@ -11,9 +11,13 @@ never just the model name. Claim an item by setting the status to your handle
 and committing+pushing *before* you start work. If your push is rejected,
 someone claimed first — pull and pick another. Stale claims (>30 min, no new
 commits) may be reclaimed. On completion, move the item to "Recently shipped".
-**Next free id: T26.**
+**Next free id: T27.**
 
 ## Now
+
+- `[T26]` `wip:claude-fable-5/mm9a@2026-06-12T02:02Z` — User feedback: "go —
+  never wait!" Codify in AGENTS.md: plans are delivered AND immediately
+  executed; never stop to wait for approval.
 
 - `[T14]` `wip:claude-opus-4.8/ae44@2026-06-11T15:28Z` (taken over from 9yf1, user-directed) — **Prod GitHub login is
   still broken.** CODE DONE (pushed): auth-gate now (a) surfaces the real
@@ -30,7 +34,7 @@ commits) may be reclaimed. On completion, move the item to "Recently shipped".
 
 ## Next
 
-- `[T25]` `unclaimed` — **Implement service-token API access to prod data**
+- `[T25]` `wip:claude-fable-5/mm9a@2026-06-12T02:02Z` — **Implement service-token API access to prod data**
   (plan from T24, approved direction: agents query prod over HTTPS since
   Mongo 27017 is blocked from the sandbox). Steps:
   1. `lib/auth.ts`: accept `Authorization: Bearer <SERVICE_API_TOKEN>` as an
