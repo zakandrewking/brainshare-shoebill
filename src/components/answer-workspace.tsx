@@ -15,6 +15,7 @@ import {
   SearchIcon,
   SendIcon,
   Trash2Icon,
+  XIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Streamdown } from "streamdown";
@@ -706,7 +707,7 @@ export function AnswerWorkspace({ user }: { user: User }) {
         <Card>
           <CardContent className="space-y-3">
             <Label htmlFor="question">What truth do you seek?</Label>
-            <div>
+            <div className="relative">
               <Textarea
                 id="question"
                 value={question}
@@ -715,7 +716,7 @@ export function AnswerWorkspace({ user }: { user: User }) {
                 // Delay so a click on a suggestion lands before it unmounts.
                 onBlur={() => setTimeout(() => setQuestionFocused(false), 120)}
                 placeholder="For example: Does the universe have meaning, or do we give it one?"
-                className="min-h-28 resize-y text-base"
+                className="min-h-28 resize-y pr-10 text-base"
                 disabled={isGenerating}
                 onKeyDown={(event) => {
                   if (event.key === "Escape") {
@@ -731,6 +732,22 @@ export function AnswerWorkspace({ user }: { user: User }) {
                   }
                 }}
               />
+              {question && !isGenerating ? (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label="Clear question"
+                  className="absolute top-2 right-2 size-7"
+                  // Keep focus in the textarea so the suggestions don't blink.
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={() => {
+                    setQuestion("");
+                    document.getElementById("question")?.focus();
+                  }}
+                >
+                  <XIcon />
+                </Button>
+              ) : null}
               {showRelated ? (
                 // In normal flow (not an overlay) so the suggestions push the
                 // "Generate answer" row down instead of covering it.

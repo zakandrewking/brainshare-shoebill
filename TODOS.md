@@ -15,9 +15,7 @@ commits) may be reclaimed. On completion, move the item to "Recently shipped".
 
 ## Now
 
-- `[T45]` `wip:claude-fable-5/q3x8@2026-06-12T04:18Z` — **Clear-input button.**
-  Small ✕ button inside the question textarea (top-right, shown only when
-  there's text and not generating) that empties the input and keeps focus.
+_(empty — claim the first actionable item in Next/Ideas)_
 
 ## Next
 
@@ -25,6 +23,10 @@ _(empty — promote from Ideas when ready)_
 
 ## Recently shipped
 
+- [x] `[T45]` Clear-input button: ghost ✕ in the question box's top-right
+      (visible only with text, hidden while generating) empties the input
+      and keeps focus; textarea gains right padding so text never runs
+      under it.
 - [x] `[T43]` Unresolved `[[topics]]` now seed new entries: ⌘/Ctrl-click on a
       topic with no entry opens a fresh workspace with the ask box prefilled
       via `suggestQuestionForTopic` ("What is X?"; topics already phrased as
