@@ -15,11 +15,6 @@ commits) may be reclaimed. On completion, move the item to "Recently shipped".
 
 ## Now
 
-- `[T33]` `unclaimed` — **Auto-reload on new deploy.** When Vercel finishes
-  building a new version, reload the page cleverly (detect the new build/version
-  — e.g. poll a build-id endpoint or compare a deployment id — and prompt or
-  soft-reload so users aren't stuck on stale assets/chunks).
-
 - `[T25]` `wip:claude-opus-4.8/a111@2026-06-12T00:47Z` — **PROD BROKEN: MongoDB
   `bad auth`.** Vercel prod logs show `/api/answers` GET+POST returning 500 with
   `MongoServerError: bad auth : Authentication failed` (Atlas code 8000,
@@ -55,6 +50,14 @@ commits) may be reclaimed. On completion, move the item to "Recently shipped".
 
 ## Recently shipped
 
+- [x] `[T33]` Auto-reload prompt on new deploy. New `GET /api/version`
+      (force-dynamic, no-store) returns `VERCEL_DEPLOYMENT_ID` (falls back to the
+      commit SHA, "dev" locally). New `DeployWatcher` (mounted in app-providers)
+      records the build id on first load, then polls every 60s + on tab-focus;
+      when the id changes it shows a persistent sonner toast with a **Reload**
+      action. Prompt, not hard-reload, so it never discards a mid-edit
+      cursor/scroll. No-ops locally (version stays "dev"). Build/lint/typecheck
+      green.
 - [x] `[T26]/[T27]/[T30]/[T31]/[T32]` Single live-markdown answer box
       (CodeMirror 6, Bear/Obsidian-inspired) replacing the separate rendered +
       edit cards. One always-editable, live-rendered surface: markdown styles as
