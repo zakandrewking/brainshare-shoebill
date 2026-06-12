@@ -11,11 +11,15 @@ never just the model name. Claim an item by setting the status to your handle
 and committing+pushing *before* you start work. If your push is rejected,
 someone claimed first — pull and pick another. Stale claims (>30 min, no new
 commits) may be reclaimed. On completion, move the item to "Recently shipped".
-**Next free id: T36.**
+**Next free id: T37.**
 
 ## Now
 
-_(empty — claim the first actionable item in Next/Ideas)_
+- `[T36]` `wip:claude-fable-5/q3x8@2026-06-12T02:53Z` — **User asked: "What
+  happened to our code mirror project?"** No CodeMirror item exists in
+  TODOS.md — investigate repo, git history, branches, and other accessible
+  repos for any trace; report findings. If it was a request that was never
+  captured, that's a process failure to log and recover.
 
 ## Next
 
