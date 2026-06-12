@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import {
   EMBEDDING_DIMENSIONS,
+  embeddingInput,
   embedQuestions,
   getEmbeddingConfig,
   matchTopics,
@@ -59,11 +60,18 @@ describe("embedding config and dispatch", () => {
     expect(await embedQuestions(["anything"])).toBeNull();
   });
 
-  it("identifies stored vectors by a model string that includes dimensions", () => {
+  it("identifies stored vectors by a model string with dimensions and input kind", () => {
     process.env.AI_PROVIDER = "mock";
     expect(getEmbeddingConfig().model).toBe(
-      `mock/deterministic@${EMBEDDING_DIMENSIONS}`,
+      `mock/deterministic@${EMBEDDING_DIMENSIONS}+qa`,
     );
+  });
+});
+
+describe("embeddingInput", () => {
+  it("joins the question with the answer text and caps the length", () => {
+    expect(embeddingInput("why?", "because.")).toBe("why?\n\nbecause.");
+    expect(embeddingInput("q", "x".repeat(5000))).toHaveLength(4000);
   });
 });
 

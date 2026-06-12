@@ -15,15 +15,7 @@ commits) may be reclaimed. On completion, move the item to "Recently shipped".
 
 ## Now
 
-- `[T41]` `wip:claude-fable-5/q3x8@2026-06-12T03:25Z` — **Embed question +
-  answer text, not the bare question.** Live prod cosine matrix (stored
-  vectors) shows bat ↔ consciousness at 0.043 — question-only embeddings
-  can't encode the Nagel link, so no threshold connects them without noise
-  (next unrelated pairs sit at ~0.26–0.29). Answer texts DO connect them.
-  Fix: embedding input becomes `question + aiText` (truncated), bump the
-  embeddingModel tag (`…@256+qa`) so every stored vector lazily re-embeds,
-  null the vector on regenerate, and verify bat ↔ consciousness ranks in
-  Related + `[[topic]]` resolution on prod.
+_(empty — claim the first actionable item in Next/Ideas)_
 
 ## Next
 
@@ -31,6 +23,14 @@ _(empty — promote from Ideas when ready)_
 
 ## Recently shipped
 
+- [x] `[T41]` **Entries are embedded as question + answer text.** Prod cosine
+      matrix showed bat ↔ consciousness at 0.043 with question-only vectors
+      (no threshold could connect them; next unrelated pairs ~0.26–0.29), but
+      the bat answer explicitly discusses consciousness. `embeddingInput`
+      joins question + `aiText` (4k cap) everywhere (create, backfill);
+      embeddingModel tag bumped to `…@256+qa` so all stored vectors lazily
+      re-embed on the next related/crosslinks call; regenerate nulls the
+      vector (new baseline ⇒ new embedding). Verified live post-deploy.
 - [x] `[T40]` **Semantic `[[topic]]` resolution.** New `POST /api/crosslinks`
       embeds unresolved topics (batched with candidate backfill via the
       shared `embedWithCandidates` helper, now also used by `/api/related`)

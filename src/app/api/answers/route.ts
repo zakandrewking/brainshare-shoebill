@@ -3,7 +3,11 @@ import { z } from "zod";
 
 import { createAnswer, listAnswers } from "@/lib/answers";
 import { AuthError, requireAuthorizedUser } from "@/lib/auth";
-import { embedQuestions, getEmbeddingConfig } from "@/lib/embedding";
+import {
+  embeddingInput,
+  embedQuestions,
+  getEmbeddingConfig,
+} from "@/lib/embedding";
 
 export const runtime = "nodejs";
 
@@ -48,7 +52,7 @@ export async function POST(request: Request) {
     let questionEmbedding: number[] | null = null;
     let embeddingModel: string | null = null;
     try {
-      const embeddings = await embedQuestions([question]);
+      const embeddings = await embedQuestions([embeddingInput(question, aiText)]);
       if (embeddings) {
         questionEmbedding = embeddings[0];
         embeddingModel = getEmbeddingConfig().model;

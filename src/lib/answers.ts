@@ -51,6 +51,8 @@ async function answersCollection() {
 export type RelatedCandidateDocument = {
   id: string;
   question: string;
+  /** AI baseline text; embedded together with the question (see embeddingInput). */
+  text: string;
   embedding: number[] | null;
   embeddingModel: string | null;
 };
@@ -90,7 +92,14 @@ export async function listRelatedCandidates(
   const documents = await collection
     .find(
       { userId },
-      { projection: { question: 1, questionEmbedding: 1, embeddingModel: 1 } },
+      {
+        projection: {
+          question: 1,
+          aiText: 1,
+          questionEmbedding: 1,
+          embeddingModel: 1,
+        },
+      },
     )
     .sort({ updatedAt: -1 })
     .toArray();
@@ -98,6 +107,7 @@ export async function listRelatedCandidates(
   return documents.map((document) => ({
     id: document._id.toHexString(),
     question: document.question,
+    text: document.aiText,
     embedding: document.questionEmbedding ?? null,
     embeddingModel: document.embeddingModel ?? null,
   }));
@@ -179,7 +189,8 @@ export async function regenerateAnswer(
 
   // Overwrite in place: replace the AI baseline, reset the user's edits back to
   // that baseline, and recompute attribution. Keep the same id, question, and
-  // createdAt so the submission stays addressable.
+  // createdAt so the submission stays addressable. The stored embedding covers
+  // question+answer text, so a new baseline invalidates it (re-embedded lazily).
   const updatedAt = new Date();
   const segments = attributeText(aiText, aiText);
   await collection.updateOne(
@@ -191,6 +202,8 @@ export async function regenerateAnswer(
         segments,
         provider,
         model,
+        questionEmbedding: null,
+        embeddingModel: null,
         updatedAt,
       },
     },

@@ -2,7 +2,11 @@ import {
   setQuestionEmbedding,
   type RelatedCandidateDocument,
 } from "@/lib/answers";
-import { embedQuestions, getEmbeddingConfig } from "@/lib/embedding";
+import {
+  embeddingInput,
+  embedQuestions,
+  getEmbeddingConfig,
+} from "@/lib/embedding";
 
 export type EmbeddedCandidate = {
   id: string;
@@ -37,7 +41,9 @@ export async function embedWithCandidates(
   try {
     const embeddings = await embedQuestions([
       ...queries,
-      ...stale.map((candidate) => candidate.question),
+      ...stale.map((candidate) =>
+        embeddingInput(candidate.question, candidate.text),
+      ),
     ]);
     if (!embeddings) {
       return null;

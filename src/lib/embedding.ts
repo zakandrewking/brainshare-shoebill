@@ -17,14 +17,32 @@ export type EmbeddingConfig = {
 };
 
 export function getEmbeddingConfig(): EmbeddingConfig {
+  // The "+qa" suffix marks vectors of question+answer text (not the bare
+  // question); bumping the tag lazily re-embeds everything stored before.
   if (process.env.AI_PROVIDER === "mock") {
-    return { provider: "mock", model: `mock/deterministic@${EMBEDDING_DIMENSIONS}` };
+    return {
+      provider: "mock",
+      model: `mock/deterministic@${EMBEDDING_DIMENSIONS}+qa`,
+    };
   }
   if (process.env.OPENAI_API_KEY) {
     const model = process.env.EMBEDDING_MODEL ?? "text-embedding-3-small";
-    return { provider: "openai", model: `openai/${model}@${EMBEDDING_DIMENSIONS}` };
+    return {
+      provider: "openai",
+      model: `openai/${model}@${EMBEDDING_DIMENSIONS}+qa`,
+    };
   }
   return { provider: null, model: "none" };
+}
+
+/**
+ * What gets embedded for an entry: the question plus the answer's text. Bare
+ * questions miss links their answers make explicit — live example: "whats it
+ * like to be a bat" ↔ "What is consciousness?" scored 0.043 question-to-
+ * question while the bat answer explicitly discusses consciousness.
+ */
+export function embeddingInput(question: string, text: string): string {
+  return `${question}\n\n${text}`.slice(0, 4000);
 }
 
 // Deterministic local embedding: hash each word into a few buckets of a fixed
