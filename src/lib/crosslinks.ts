@@ -80,6 +80,24 @@ export function normalizeTopic(topic: string): string {
 }
 
 /**
+ * Reverse crosslinks: entries whose text carries a `[[topic]]` that resolves
+ * to `open` (lexically — same rules as forward links). Pure and client-side;
+ * the full submission texts are already loaded.
+ */
+export function findBacklinks(
+  open: LinkTarget,
+  submissions: (LinkTarget & { currentText: string })[],
+): LinkTarget[] {
+  return submissions.filter(
+    (submission) =>
+      submission.id !== open.id &&
+      findCrosslinkRanges(submission.currentText, [open]).some(
+        (range) => range.resolved,
+      ),
+  );
+}
+
+/**
  * Turn an unresolved [[topic]] into a question to prefill the ask box with,
  * so a missing entry is one ⌘-click away from being generated.
  */

@@ -15,11 +15,7 @@ commits) may be reclaimed. On completion, move the item to "Recently shipped".
 
 ## Now
 
-- `[T49]` `wip:claude-fable-5/q3x8@2026-06-12T04:45Z` — **Backlinks row
-  ("Mentioned in").** Show entries whose text `[[links]]` to the open one
-  (reverse crosslinks). All submissions are already client-side, so a pure
-  lexical pass over their texts suffices (semantic backlinks later if
-  wanted).
+_(empty — claim the first actionable item in Next/Ideas)_
 
 ## Next
 - `[T50]` `unclaimed` — **Dark-mode + mobile visual review of the CodeMirror
@@ -30,6 +26,10 @@ commits) may be reclaimed. On completion, move the item to "Recently shipped".
 
 ## Recently shipped
 
+- [x] `[T49]` Backlinks: a "Mentioned in" chip row on the answer card lists
+      entries whose text `[[links]]` to the open one (pure client-side
+      `findBacklinks`, lexical rules, self excluded; 2 tests). Tap opens the
+      mentioning entry.
 - [x] `[T48]` Crosslinks now reachable on touch: a "Links" chip row under the
       editor lists the answer's deduped `[[topics]]` — resolved ones open
       their entry on tap, unresolved ones (dashed, "+") start the suggested

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  findBacklinks,
   findCrosslinkRanges,
   resolveCrosslinks,
   suggestQuestionForTopic,
@@ -92,6 +93,40 @@ describe("findCrosslinkRanges", () => {
 
   it("returns nothing for text without wiki-links", () => {
     expect(findCrosslinkRanges("plain text", subs)).toEqual([]);
+  });
+});
+
+describe("findBacklinks", () => {
+  const open = { id: "a1", question: "What is entropy?" };
+  const entries = [
+    {
+      id: "a1",
+      question: "What is entropy?",
+      currentText: "Self-reference via [[entropy]] must not count.",
+    },
+    {
+      id: "b1",
+      question: "Why does time flow?",
+      currentText: "Because of [[entropy]] increasing.",
+    },
+    {
+      id: "b2",
+      question: "What is kindness?",
+      currentText: "No links here at all.",
+    },
+    {
+      id: "b3",
+      question: "Black holes?",
+      currentText: "Mentions [[qualia]] only.",
+    },
+  ];
+
+  it("finds entries whose text links to the open one, excluding itself", () => {
+    expect(findBacklinks(open, entries).map((e) => e.id)).toEqual(["b1"]);
+  });
+
+  it("returns nothing when no entry links back", () => {
+    expect(findBacklinks({ id: "x", question: "Unlinked topic" }, entries)).toEqual([]);
   });
 });
 

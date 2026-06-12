@@ -5,6 +5,7 @@ import Image from "next/image";
 import { signOut, type User } from "firebase/auth";
 import {
   CheckIcon,
+  CornerUpLeftIcon,
   LayersIcon,
   LinkIcon,
   LoaderCircleIcon,
@@ -42,6 +43,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { attributeText, attributionCounts } from "@/lib/attribution";
 import {
+  findBacklinks,
   findCrosslinkRanges,
   normalizeTopic,
   suggestQuestionForTopic,
@@ -231,6 +233,12 @@ export function AnswerWorkspace({ user }: { user: User }) {
     }
     return chips;
   }, [crosslinkRanges]);
+
+  // Entries whose text [[links]] to the open one (reverse crosslinks).
+  const backlinks = useMemo(
+    () => (answer ? findBacklinks(answer, submissions) : []),
+    [answer, submissions],
+  );
 
   // Look up topics that didn't resolve lexically, debounced while typing.
   useEffect(() => {
@@ -944,6 +952,31 @@ export function AnswerWorkspace({ user }: { user: User }) {
                         </button>
                       ),
                     )}
+                  </div>
+                ) : null}
+                {backlinks.length > 0 ? (
+                  <div className="flex flex-wrap items-center gap-1.5 text-xs">
+                    <span className="flex items-center gap-1 text-muted-foreground">
+                      <CornerUpLeftIcon className="size-3" />
+                      Mentioned in:
+                    </span>
+                    {backlinks.map((backlink) => (
+                      <button
+                        key={backlink.id}
+                        type="button"
+                        onClick={() => {
+                          const match = submissions.find(
+                            (submission) => submission.id === backlink.id,
+                          );
+                          if (match) {
+                            openSubmission(match);
+                          }
+                        }}
+                        className="text-primary underline decoration-dotted underline-offset-2 hover:decoration-solid"
+                      >
+                        {backlink.question}
+                      </button>
+                    ))}
                   </div>
                 ) : null}
                 {answerRelated.length > 0 ? (
