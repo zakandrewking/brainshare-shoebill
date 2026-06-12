@@ -11,15 +11,24 @@ never just the model name. Claim an item by setting the status to your handle
 and committing+pushing *before* you start work. If your push is rejected,
 someone claimed first — pull and pick another. Stale claims (>30 min, no new
 commits) may be reclaimed. On completion, move the item to "Recently shipped".
-**Next free id: T37.**
+**Next free id: T39.**
 
 ## Now
 
-- `[T36]` `wip:claude-fable-5/q3x8@2026-06-12T02:53Z` — **User asked: "What
-  happened to our code mirror project?"** No CodeMirror item exists in
-  TODOS.md — investigate repo, git history, branches, and other accessible
-  repos for any trace; report findings. If it was a request that was never
-  captured, that's a process failure to log and recover.
+- `[T37]` `wip:claude-fable-5/q3x8@2026-06-12T03:00Z` — **One live markdown
+  answer surface (CodeMirror).** Replace the flip (rendered ⇄ editor) shipped
+  in T33 with a single always-editable CodeMirror 6 markdown editor: live
+  markdown styling (headings/bold/italic/links/quotes styled as you type),
+  attribution decorations (user text tinted) and crosslink decorations
+  ([[topic]] underlined when resolved, muted when not) recomputed per
+  keystroke, ⌘/Ctrl+click on a resolved [[link]] opens that submission.
+  Removes HighlightedEditor + decorateSegments (superseded).
+- `[T38]` `wip:claude-fable-5/q3x8@2026-06-12T03:00Z` — **Thinking panel:
+  collapsed by default AND persists after generation.** Keep the reasoning
+  summary visible (collapsed `<details>`) on the answer card once streaming
+  finishes — currently it vanishes with the streaming card. Ephemeral per
+  session (still not persisted to the DB); cleared when switching
+  submissions.
 
 ## Next
 
@@ -27,6 +36,14 @@ _(empty — promote from Ideas when ready)_
 
 ## Recently shipped
 
+- [x] `[T36]` "What happened to our code mirror project?" — investigated:
+      ZERO trace of CodeMirror in this repo (working tree, all 68 commits on
+      all branches, package.json history) or in any `zakandrewking` GitHub
+      repo (name/description/readme search; `list_repos` tool unavailable in
+      this session). Conclusion: it was discussed somewhere (likely a chat
+      session) but never captured in TODOS.md — a capture-discipline failure
+      by a previous session. Recovered: the intent (CodeMirror-based live
+      markdown editing of answers) is now `[T37]` and in progress.
 - [x] `[T35]` System prompt now demands references: every answer must end
       with a `References:` line plus a compact bulleted list of 2–4 real,
       verifiable sources (author, *title*, year), with an explicit
