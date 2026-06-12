@@ -11,15 +11,28 @@ never just the model name. Claim an item by setting the status to your handle
 and committing+pushing *before* you start work. If your push is rejected,
 someone claimed first — pull and pick another. Stale claims (>30 min, no new
 commits) may be reclaimed. On completion, move the item to "Recently shipped".
-**Next free id: T48.**
+**Next free id: T52.**
 
 ## Now
 
-_(empty — claim the first actionable item in Next/Ideas)_
+- `[T48]` `wip:claude-fable-5/q3x8@2026-06-12T04:35Z` — **Crosslinks are
+  unreachable on touch devices.** The editor's [[link]] navigation is
+  ⌘/Ctrl-click only — no equivalent on mobile. Add a "Links" chip row under
+  the editor (next to Related): resolved topics open their entry on tap,
+  unresolved ones start a suggested question (same handlers as the editor),
+  deduped by topic. Desktop meta-click stays.
 
 ## Next
 
-_(empty — promote from Ideas when ready)_
+- `[T49]` `unclaimed` — **Backlinks row ("Mentioned in").** Show entries
+  whose text `[[links]]` to the open one (reverse crosslinks). All
+  submissions are already client-side, so a pure lexical pass over their
+  texts suffices (semantic backlinks later if wanted).
+- `[T50]` `unclaimed` — **Dark-mode + mobile visual review of the CodeMirror
+  surface.** The CM theme hardcodes sky tints/primary vars built blind;
+  needs a signed-in visual pass (user, or agent-browser if sign-in becomes
+  drivable). Check attribution tint contrast, crosslink colors, selection
+  color, and editor padding at mobile widths, light + dark.
 
 ## Recently shipped
 
@@ -331,6 +344,8 @@ _(empty — promote from Ideas when ready)_
 
 _(Unscheduled. Promote to Now/Next with a fresh id when ready.)_
 
+- `[T51]` `unclaimed` — **Full-text search across answers** in the
+  Submissions sheet (client-side over loaded texts first; hybrid later).
 - `[T29]` `unclaimed` — **GitHub OAuth app name typo: "Brainshaire".** The
   GitHub sign-in page says "Sign in to GitHub to continue to *Brainshaire*".
   USER-ONLY fix: rename the OAuth app at github.com → Settings → Developer
