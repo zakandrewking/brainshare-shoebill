@@ -11,7 +11,7 @@ never just the model name. Claim an item by setting the status to your handle
 and committing+pushing *before* you start work. If your push is rejected,
 someone claimed first — pull and pick another. Stale claims (>30 min, no new
 commits) may be reclaimed. On completion, move the item to "Recently shipped".
-**Next free id: T24.**
+**Next free id: T26.**
 
 ## Now
 
@@ -30,6 +30,25 @@ commits) may be reclaimed. On completion, move the item to "Recently shipped".
 
 ## Next
 
+- `[T25]` `unclaimed` — **Implement service-token API access to prod data**
+  (plan from T24, approved direction: agents query prod over HTTPS since
+  Mongo 27017 is blocked from the sandbox). Steps:
+  1. `lib/auth.ts`: accept `Authorization: Bearer <SERVICE_API_TOKEN>` as an
+     alternative to a Firebase ID token — timing-safe compare
+     (`crypto.timingSafeEqual`), only when env var set and ≥32 chars; resolve
+     identity by `adminAuth.getUserByEmail(<first allowlisted email>)` (cached)
+     so existing `userId`-scoped routes work unchanged.
+  2. Existing typed CRUD routes (`/api/answers*`) then work with the token —
+     read AND write (Zod-validated, same scope as the user; no superuser path).
+  3. Add read-only `POST /api/admin/find` (service-token ONLY): Zod body
+     `{ collection: enum["answers"], filter: plain field equality only (reject
+     $-operator keys), projection?, sort?, limit ≤ 200 }` for ad-hoc debugging.
+  4. Generate token (`openssl rand -hex 32`); set `SERVICE_API_TOKEN` in Vercel
+     prod env (via CLI, we have access); user adds it to the Claude environment
+     env vars for future sessions. Never committed; header-only (never in URLs).
+  5. Unit tests: token accept/reject/env-unset, find-schema operator rejection.
+  6. Deploy via main; verify from the sandbox with curl against brainshare.io
+     (200 with token, 401 without); confirm browser flow unaffected.
 - `[T13]` `unclaimed` — **Related-questions: vector/hybrid ranking (T06 follow-up).**
   Upgrade the keyword dropdown to hybrid search. Needs an infra decision
   (embeddings provider + vector store — Atlas Vector Search?), likely a server
@@ -37,6 +56,13 @@ commits) may be reclaimed. On completion, move the item to "Recently shipped".
 
 ## Recently shipped
 
+- [x] `[T24]` Planned token-based prod-data access over the API; concrete
+      implementation steps captured as `[T25]` in Next. Key choices: reuse the
+      deployed app's API (no new service), one static `SERVICE_API_TOKEN`
+      recognized by `requireAuthorizedUser` that impersonates the allowlisted
+      user, plus a read-only allowlisted `/api/admin/find` for ad-hoc queries.
+      Rejected: Atlas Data API (deprecated 2025), separate proxy service,
+      relaxing sandbox egress (user: not available).
 - [x] `[T23]` Confirmed agent access: **Vercel logs ✅** (`vercel` CLI +
       `VERCEL_ACCESS_TOKEN` authenticates as `zakandrewking`; pulled live prod
       runtime logs for `brainshare-shoebill`). **Mongo shell ❌ from this
