@@ -15,11 +15,7 @@ commits) may be reclaimed. On completion, move the item to "Recently shipped".
 
 ## Now
 
-- `[T30]` `wip:claude-fable-5/q3x8@2026-06-12T02:33Z` — **Related-questions
-  dropdown covers the submit button.** The suggestions overlay is absolutely
-  positioned below the textarea and sits on top of the "Generate answer"
-  button row, blocking clicks. Fix: render the suggestions in normal flow so
-  they push the button down instead of covering it.
+_(empty — claim the first actionable item in Next/Ideas)_
 
 ## Next
 
@@ -27,6 +23,9 @@ _(empty — promote from Ideas when ready)_
 
 ## Recently shipped
 
+- [x] `[T30]` Related-questions suggestions no longer cover the "Generate
+      answer" button: the panel renders in normal flow under the textarea
+      (pushing the button down) instead of as an absolute overlay.
 - [x] `[T13]` **Hybrid related-questions shipped + verified live (2026-06-12).**
       Questions are embedded server-side (AI SDK `embedMany` + OpenAI
       `text-embedding-3-small` at 256 dims; deterministic local embedder under

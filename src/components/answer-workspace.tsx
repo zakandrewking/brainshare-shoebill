@@ -568,7 +568,7 @@ export function AnswerWorkspace({ user }: { user: User }) {
         <Card>
           <CardContent className="space-y-3">
             <Label htmlFor="question">What truth do you seek?</Label>
-            <div className="relative">
+            <div>
               <Textarea
                 id="question"
                 value={question}
@@ -594,7 +594,9 @@ export function AnswerWorkspace({ user }: { user: User }) {
                 }}
               />
               {showRelated ? (
-                <div className="retro-raised absolute top-full right-0 left-0 z-30 mt-1 max-h-64 overflow-y-auto bg-popover py-1">
+                // In normal flow (not an overlay) so the suggestions push the
+                // "Generate answer" row down instead of covering it.
+                <div className="retro-raised mt-1 max-h-64 overflow-y-auto bg-popover py-1">
                   <p className="px-3 py-1 text-xs font-medium text-muted-foreground">
                     Related questions
                   </p>
