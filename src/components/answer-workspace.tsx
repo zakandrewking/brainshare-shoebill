@@ -224,11 +224,25 @@ export function AnswerWorkspace({ user }: { user: User }) {
     const decoder = new TextDecoder();
     let completeText = "";
 
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      completeText += decoder.decode(value, { stream: true });
-      setStreamingText(completeText);
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        completeText += decoder.decode(value, { stream: true });
+        setStreamingText(completeText);
+      }
+    } catch (streamError) {
+      // The model stream can abort at finalization even after the full answer
+      // has been delivered: the AI SDK surfaces a late error by erroring the
+      // response body, which rejects this read. Don't throw away the answer the
+      // user just watched stream in — keep it and let the save proceed. Only
+      // treat it as a real failure if no text arrived at all.
+      console.error("Answer stream ended with an error:", streamError);
+      if (completeText.trim().length === 0) {
+        throw new Error(
+          "The answer stream failed before any text arrived. Please try again.",
+        );
+      }
     }
 
     completeText += decoder.decode();

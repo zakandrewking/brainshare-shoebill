@@ -11,7 +11,7 @@ never just the model name. Claim an item by setting the status to your handle
 and committing+pushing *before* you start work. If your push is rejected,
 someone claimed first — pull and pick another. Stale claims (>30 min, no new
 commits) may be reclaimed. On completion, move the item to "Recently shipped".
-**Next free id: T21.**
+**Next free id: T22.**
 
 ## Now
 
@@ -37,6 +37,18 @@ commits) may be reclaimed. On completion, move the item to "Recently shipped".
 
 ## Recently shipped
 
+- [x] `[T21]` Fix "answer streams fully, then shows an error." Root mechanism:
+      `toTextStreamResponse()` aborts the HTTP body when the model stream emits a
+      late error part *after* delivering all text deltas, so the client's final
+      `reader.read()` rejected and the whole answer was discarded + a toast
+      shown. Fix: (a) `lib/ai.ts` adds `onError` so the real provider error is
+      logged (default handler swallowed it on Vercel); (b) `answer-workspace.tsx`
+      `streamGeneration` now catches a trailing stream abort and keeps the
+      already-streamed text (saving what the user saw) instead of throwing —
+      only erroring if zero text arrived. Covers generate + regenerate. Build +
+      lint + typecheck green. NOTE: if the underlying cause is a maxDuration=120
+      timeout on high-effort generations, answers may still truncate — flagged
+      to user; tune reasoningEffort/maxDuration if so.
 - [x] `[T20]` Philosophy / truth-seeking vibe. System prompt (`lib/ai.ts`)
       reframed as a "contemplative companion in the search for truth about the
       universe" — first-principles reasoning, fair weighing of views, honest

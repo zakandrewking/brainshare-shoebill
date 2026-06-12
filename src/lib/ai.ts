@@ -67,6 +67,12 @@ export function streamAnswer(question: string) {
     model: languageModel,
     system: systemPrompt,
     prompt: question,
+    // Surface the real provider error. Without this, the SDK's default handler
+    // only console.errors a bare object and the stream body is aborted, so the
+    // browser sees "answer streamed, then failed" with no diagnosable cause.
+    onError: ({ error }) => {
+      console.error("[streamAnswer] generation stream error:", error);
+    },
     providerOptions:
       config.provider === "openai"
         ? {
