@@ -15,13 +15,7 @@ commits) may be reclaimed. On completion, move the item to "Recently shipped".
 
 ## Now
 
-- `[T42]` `wip:claude-fable-5/q3x8@2026-06-12T03:35Z` — **Related row should
-  rank doc-to-doc.** Post-T41 the doc-to-doc matrix is right (bat ↔
-  consciousness 0.555, top-5 pair) but the answer card still queries with the
-  short question text, which misses it (bat row empty). Add `answerId` to
-  `/api/related`: use the open answer's stored vector as the query embedding
-  (its question for the keyword half); workspace sends `answerId` for the
-  Related row, keeps `query` for the typing dropdown.
+_(empty — claim the first actionable item in Next/Ideas)_
 
 ## Next
 
@@ -29,6 +23,12 @@ _(empty — promote from Ideas when ready)_
 
 ## Recently shipped
 
+- [x] `[T42]` Related row ranks doc-to-doc: `/api/related` accepts `answerId`
+      and uses that answer's stored question+text vector as the query (its
+      question for the keyword half); the workspace sends `answerId` for the
+      answer-card row and keeps `query` for the typing dropdown. Verified
+      live: the bat entry's Related row now leads with "What is
+      consciousness?" (cosine 0.555).
 - [x] `[T41]` **Entries are embedded as question + answer text.** Prod cosine
       matrix showed bat ↔ consciousness at 0.043 with question-only vectors
       (no threshold could connect them; next unrelated pairs ~0.26–0.29), but

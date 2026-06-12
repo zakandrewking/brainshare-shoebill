@@ -156,13 +156,13 @@ export function AnswerWorkspace({ user }: { user: User }) {
   const showRelated =
     questionFocused && !isGenerating && displayedRelated.length > 0;
 
-  // Hybrid-search the open answer's question so related entries cross-link
-  // automatically, independent of any [[topic]] tokens in the text. Keyed on
-  // id+question (not the answer object) so saves don't refetch.
+  // Doc-to-doc related entries for the open answer (its stored vector covers
+  // question + answer text), so entries cross-link by what they discuss —
+  // independent of any [[topic]] tokens. Keyed on the id so saves don't
+  // refetch.
   const answerId = answer?.id;
-  const answerQuestion = answer?.question;
   useEffect(() => {
-    if (!answerId || !answerQuestion) {
+    if (!answerId) {
       return;
     }
     let stale = false;
@@ -170,7 +170,7 @@ export function AnswerWorkspace({ user }: { user: User }) {
       try {
         const response = await authenticatedFetch(user, "/api/related", {
           method: "POST",
-          body: JSON.stringify({ query: answerQuestion, excludeId: answerId }),
+          body: JSON.stringify({ answerId }),
         });
         if (!response.ok || stale) return;
         const body = (await response.json()) as {
@@ -185,7 +185,7 @@ export function AnswerWorkspace({ user }: { user: User }) {
     return () => {
       stale = true;
     };
-  }, [answerId, answerQuestion, user]);
+  }, [answerId, user]);
 
   const segments = useMemo(
     () => (answer ? attributeText(answer.aiText, currentText) : []),
