@@ -10,24 +10,19 @@ unique per-instance handle `<model>/<short-id>` (e.g. `claude-opus-4.8/ae44`),
 never just the model name. Claim an item by setting the status to your handle
 and committing+pushing *before* you start work. If your push is rejected,
 someone claimed first — pull and pick another. Stale claims (>30 min, no new
-commits) may be reclaimed. On completion, move the item to "Recently shipped".
-**Next free id: T54.**
+commits) may be reclaimed. On completion, move the item to "Awaiting
+confirmation" (shipped + verified, pending the user's check, with a one-line
+"how to check"); only the user's confirmation moves it to "Recently shipped".
+**Next free id: T55.**
 
 ## Now
 
-- `[T52]` `wip:claude-fable-5/q3x8@2026-06-12T04:45Z` — **Inline citations
-  (academia style).** References must appear inline as parenthetical
-  author–year citations — e.g. (Nagel 1974) — at the claims they support, in
-  addition to the "References:" list at the bottom; the two must correspond.
-  Update the system prompt + mock provider text.
-- `[T53]` `wip:claude-fable-5/q3x8@2026-06-12T04:45Z` — **New working rule:
-  shipped ≠ done; the user confirms.** Add to AGENTS.md: never assume a task
-  is done — after verification it goes to a new TODOS "Awaiting confirmation"
-  section with a one-line "how to check"; only user confirmation moves it to
-  Recently shipped. Check in periodically with a compact confirmation list,
-  but keep working — awaiting confirmation is not a blocker. Restructure
-  TODOS.md accordingly and move today's user-facing items (incl. `[T43]`,
-  which the user asked about) into the new section.
+- `[T54]` `wip:claude-fable-5/q3x8@2026-06-12T04:58Z` — **Autosave as the
+  user types (URGENT user ask).** Debounced (~800 ms) quiet PATCH of
+  `currentText` while editing; no toast on success (only on failure); never
+  clobber keystrokes typed while a save is in flight; tri-state footer chip
+  Saving/Saved/Unsaved replaces the manual Save button; update the local
+  submissions copy on save so backlinks/related stay fresh without refetch.
 
 ## Next
 - `[T50]` `unclaimed` — **Dark-mode + mobile visual review of the CodeMirror
@@ -36,42 +31,46 @@ commits) may be reclaimed. On completion, move the item to "Recently shipped".
   drivable). Check attribution tint contrast, crosslink colors, selection
   color, and editor padding at mobile widths, light + dark.
 
-## Recently shipped
+## Awaiting confirmation
 
-- [x] `[T49]` Backlinks: a "Mentioned in" chip row on the answer card lists
-      entries whose text `[[links]]` to the open one (pure client-side
-      `findBacklinks`, lexical rules, self excluded; 2 tests). Tap opens the
-      mentioning entry.
-- [x] `[T48]` Crosslinks now reachable on touch: a "Links" chip row under the
-      editor lists the answer's deduped `[[topics]]` — resolved ones open
-      their entry on tap, unresolved ones (dashed, "+") start the suggested
-      question; Related row icon switched to the search glyph to
-      differentiate. Desktop ⌘/Ctrl-click unchanged.
-- [x] `[T46]` One loading indicator while generating: the streaming card
-      header keeps the sole spinner; Generate/Regenerate/Save buttons lost
-      their spinners and ellipses (static "Generating"/"Regenerating"/
-      "Saving"), header reads "Thinking" (no "…"), placeholder well is a
-      static "The answer will stream here.", thinking details stays static
-      and collapsed.
-- [x] `[T47]` Fixed the serif→monospace font jump when generation finishes:
-      CodeMirror's base theme forces monospace on `.cm-scroller`, so
-      `.cm-content`'s "inherit" resolved against it instead of the
-      `.literary-prose` wrapper. The theme now re-inherits on `.cm-scroller`;
-      the editor matches the streamed view's literary serif.
-- [x] `[T45]` Clear-input button: ghost ✕ in the question box's top-right
-      (visible only with text, hidden while generating) empties the input
-      and keeps focus; textarea gains right padding so text never runs
-      under it.
-- [x] `[T43]` Unresolved `[[topics]]` now seed new entries: ⌘/Ctrl-click on a
-      topic with no entry opens a fresh workspace with the ask box prefilled
-      via `suggestQuestionForTopic` ("What is X?"; topics already phrased as
-      questions pass through) and focused, so the suggestions dropdown shows
-      near-matches before generating. Unresolved links styled actionable
-      (dashed underline, pointer, title hint). 3 new tests.
-- [x] `[T44]` Suggestion clicks no longer clobber the typed question:
-      `selectSubmission`/`openSubmission` accept `keepQuestion`, used by the
-      dropdown so the entry opens below while the input keeps the exact
-      draft text.
+_(Shipped + verified + deployed; pending the user's check. Confirming moves an
+item to Recently shipped; a problem report moves it back to Now.)_
+
+- `[T52]` Inline citations (academia style): the system prompt now demands
+  parenthetical author–year citations at the claims they support, matching
+  the bottom References list 1:1, no invented sources. CHECK: regenerate any
+  entry — claims should carry (Author Year) inline and the list at the
+  bottom should correspond. (New generations only.)
+- `[T53]` "Shipped ≠ done" rule live in AGENTS.md + this section exists; the
+  lifecycle is now wip → Awaiting confirmation → Recently shipped (on your
+  confirmation). CHECK: this section reads right to you.
+
+- `[T43]` Unresolved `[[topics]]` seed new entries: ⌘/Ctrl-click a dashed
+  `[[topic]]` (desktop) or tap it in the "Links" chip row (mobile) → fresh
+  workspace, ask box prefilled "What is X?" and focused, suggestions shown.
+  CHECK: open the bat entry, ⌘-click `[[subjective experience]]` (or tap its
+  chip) — the ask box should fill and focus without losing other state.
+- `[T44]` Suggestion clicks keep the typed draft. CHECK: type a few words,
+  click a dropdown suggestion — the entry opens below, input text unchanged.
+- `[T45]` Clear-input ✕ button in the question box. CHECK: type, press ✕ —
+  input empties, focus stays.
+- `[T46]` One loading indicator while generating (header spinner only; all
+  labels static). CHECK: generate — exactly one spinner, no "…" anywhere.
+- `[T47]` No serif→monospace font jump when generation finishes. CHECK: the
+  finished answer stays in the literary serif.
+- `[T48]` "Links" chip row (tap-friendly crosslinks). CHECK on the phone:
+  chips open entries / start questions.
+- `[T49]` "Mentioned in" backlinks row. CHECK: open the consciousness entry —
+  the bat entry should appear there (its text says `[[consciousness]]`).
+- `[T37]`+`[T38]` CodeMirror live markdown editor + persistent collapsed
+  Thinking panel. CHECK: edit an answer (live markdown styling, your text
+  tinted), Thinking stays after generation, collapsed.
+- `[T30]`–`[T32]`, `[T35]` Earlier UI tweaks: suggestions don't cover the
+  submit button; thinking collapsed by default; network-error toasts name the
+  step; answers end with References (new generations only — T52 revises the
+  format to academia style).
+
+## Recently shipped
 - [x] `[T42]` Related row ranks doc-to-doc: `/api/related` accepts `answerId`
       and uses that answer's stored question+text vector as the query (its
       question for the keyword half); the workspace sends `answerId` for the

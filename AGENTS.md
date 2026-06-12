@@ -24,6 +24,14 @@
   continue. A fresh user request takes priority over the backlog; capture it,
   do it, then resume advancing. Only pause for a genuine blocker (a decision
   that's the user's to make, or missing access/secrets).
+- **Shipped ≠ done — the user confirms.** Never assume a task is finished on
+  your own say-so. After implementing, verifying, and deploying, move the item
+  to **Awaiting confirmation** in `TODOS.md` with a one-line "how to check";
+  only the user's confirmation moves it to **Recently shipped**. Check in
+  periodically (e.g. whenever reporting progress) with a compact list of items
+  awaiting confirmation — but do NOT stop working while you wait; awaiting
+  confirmation is never a blocker. If the user reports a problem with an
+  awaiting item, move it back to **Now** with their feedback.
 - Never commit secrets, `.env.local`, Firebase service accounts, API keys, or
   production database credentials.
 - Preserve user changes in a dirty worktree. Do not reset or revert unrelated
@@ -55,9 +63,11 @@ not retain a task list on their own.
   or delete them the moment they ship. It should always reflect the true
   current state of the work.
 - At the start of a session, read `TODOS.md` first to pick up outstanding work.
-- Sections: **Now** (actively in progress), **Next** (ready to pick up), and
-  **Ideas** (unscheduled; promote to Next when ready). Keep entries concrete
-  and verifiable.
+- Sections: **Now** (actively in progress), **Next** (ready to pick up),
+  **Awaiting confirmation** (shipped + verified, pending the user's check —
+  each entry carries a one-line "how to check"), **Recently shipped**
+  (user-confirmed or infra-verified), and **Ideas** (unscheduled; promote to
+  Next when ready). Keep entries concrete and verifiable.
 - `TODOS.md` is **committed** — keep it up to date and commit/push changes so
   alternative clients can pick up and improve the work. When editing it, never
   drop an item: move finished work to "Recently shipped" rather than deleting.
@@ -73,8 +83,9 @@ the lock — no extra infra:
   "Next free id" note at the top of `TODOS.md` is the counter — bump it whenever
   you add an item.
 - **Status lifecycle.** `unclaimed` → `claimed:<agent>@<UTC>` (about to start) →
-  `wip:<agent>@<UTC>` (actively working) → moved to "Recently shipped" (done).
-  `<UTC>` comes from `date -u +%Y-%m-%dT%H:%MZ`.
+  `wip:<agent>@<UTC>` (actively working) → moved to "Awaiting confirmation"
+  (shipped + verified, pending user check) → moved to "Recently shipped" once
+  the user confirms. `<UTC>` comes from `date -u +%Y-%m-%dT%H:%MZ`.
 - **Handles must be unique per instance** — `<agent>` is `<model>/<short-id>`,
   e.g. `claude-opus-4.8/ae44`, never just the model name. Two concurrent clients
   of the same model would otherwise be indistinguishable, making ownership and
