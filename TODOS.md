@@ -11,9 +11,14 @@ never just the model name. Claim an item by setting the status to your handle
 and committing+pushing *before* you start work. If your push is rejected,
 someone claimed first — pull and pick another. Stale claims (>30 min, no new
 commits) may be reclaimed. On completion, move the item to "Recently shipped".
-**Next free id: T20.**
+**Next free id: T21.**
 
 ## Now
+
+- `[T20]` `wip:claude-opus-4.8/f3yl@2026-06-12T00:06Z` — **Philosophy/truth-seeking
+  vibe.** Reframe the default question-area copy (label + placeholder) and the
+  system prompt (`lib/ai.ts`) around philosophy and seeking truths about the
+  universe, instead of the current generic/product framing.
 
 - `[T14]` `wip:claude-opus-4.8/ae44@2026-06-11T15:28Z` (taken over from 9yf1, user-directed) — **Prod GitHub login is
   still broken.** CODE DONE (pushed): auth-gate now (a) surfaces the real
