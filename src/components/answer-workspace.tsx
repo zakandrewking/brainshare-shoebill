@@ -69,6 +69,19 @@ async function readError(response: Response) {
   }
 }
 
+// A fetch that dies at the network level rejects with a bare TypeError —
+// Safari says just "Load failed", Chrome "Failed to fetch". Name the step and
+// suggest a retry instead of toasting the browser's message verbatim; our own
+// thrown errors (plain Error) pass through with their specific messages.
+function describeActionError(error: unknown, step: string) {
+  if (error instanceof TypeError) {
+    return `Network error while ${step}. Check your connection and try again.`;
+  }
+  return error instanceof Error
+    ? error.message
+    : `Something went wrong while ${step}.`;
+}
+
 export function AnswerWorkspace({ user }: { user: User }) {
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState<SerializedAnswer | null>(null);
@@ -246,7 +259,7 @@ export function AnswerWorkspace({ user }: { user: User }) {
       toast.success("Submission deleted.");
     } catch (error) {
       console.error(error);
-      toast.error(error instanceof Error ? error.message : "Delete failed.");
+      toast.error(describeActionError(error, "deleting the submission"));
     }
   }
 
@@ -361,9 +374,7 @@ export function AnswerWorkspace({ user }: { user: User }) {
       void loadSubmissions();
     } catch (error) {
       console.error(error);
-      toast.error(
-        error instanceof Error ? error.message : "Generation failed.",
-      );
+      toast.error(describeActionError(error, "generating the answer"));
     } finally {
       setIsGenerating(false);
     }
@@ -411,9 +422,7 @@ export function AnswerWorkspace({ user }: { user: User }) {
       void loadSubmissions();
     } catch (error) {
       console.error(error);
-      toast.error(
-        error instanceof Error ? error.message : "Regeneration failed.",
-      );
+      toast.error(describeActionError(error, "regenerating the answer"));
     } finally {
       setIsRegenerating(false);
     }
@@ -447,7 +456,7 @@ export function AnswerWorkspace({ user }: { user: User }) {
       void loadSubmissions();
     } catch (error) {
       console.error(error);
-      toast.error(error instanceof Error ? error.message : "Save failed.");
+      toast.error(describeActionError(error, "saving your changes"));
     } finally {
       setIsSaving(false);
     }

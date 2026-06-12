@@ -15,13 +15,7 @@ commits) may be reclaimed. On completion, move the item to "Recently shipped".
 
 ## Now
 
-- `[T32]` `wip:claude-fable-5/q3x8@2026-06-12T02:39Z` — **User saw a "Load
-  failed" warning (~02:39Z, right after the T13/T30/T31 deploys).** "Load
-  failed" is Safari's TypeError message for a failed fetch, surfaced raw by a
-  toast (generate/save/regenerate/delete paths show `error.message`).
-  Investigate: Vercel runtime logs around the incident, /api/generate
-  maxDuration vs gpt-5.5 high reasoning effort, and whether the toast should
-  name the failing step instead of the bare browser message.
+_(empty — claim the first actionable item in Next/Ideas)_
 
 ## Next
 
@@ -29,6 +23,17 @@ _(empty — promote from Ideas when ready)_
 
 ## Recently shipped
 
+- [x] `[T32]` "Load failed" warning investigated + hardened. Diagnosis: the
+      toast was Safari's raw TypeError for a fetch that failed at the network
+      level (likely a transient blip — three deploys promoted within ~13 min
+      while the app was in use, or Safari suspending the tab mid-request);
+      prod logs showed no 5xx and a successful generate+save right around the
+      report. Fixes: (a) network-level TypeErrors now toast a named step
+      ("Network error while generating the answer. Check your connection and
+      try again.") instead of the bare browser message, across
+      generate/regenerate/save/delete; (b) `/api/generate` `maxDuration`
+      raised 120→300s (Hobby max) so high-effort reasoning isn't killed
+      mid-stream (T21 follow-up).
 - [x] `[T31]` Streaming "Thinking" panel now defaults to collapsed (removed
       `open` from the reasoning `<details>`); the card header still shows the
       "Thinking…" state, and the panel expands on demand.
