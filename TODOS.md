@@ -15,10 +15,6 @@ commits) may be reclaimed. On completion, move the item to "Recently shipped".
 
 ## Now
 
-- `[T26]` `wip:claude-fable-5/mm9a@2026-06-12T02:02Z` — User feedback: "go —
-  never wait!" Codify in AGENTS.md: plans are delivered AND immediately
-  executed; never stop to wait for approval.
-
 - `[T14]` `wip:claude-opus-4.8/ae44@2026-06-11T15:28Z` (taken over from 9yf1, user-directed) — **Prod GitHub login is
   still broken.** CODE DONE (pushed): auth-gate now (a) surfaces the real
   Firebase error code instead of a generic message, (b) falls back from
@@ -34,25 +30,6 @@ commits) may be reclaimed. On completion, move the item to "Recently shipped".
 
 ## Next
 
-- `[T25]` `wip:claude-fable-5/mm9a@2026-06-12T02:02Z` — **Implement service-token API access to prod data**
-  (plan from T24, approved direction: agents query prod over HTTPS since
-  Mongo 27017 is blocked from the sandbox). Steps:
-  1. `lib/auth.ts`: accept `Authorization: Bearer <SERVICE_API_TOKEN>` as an
-     alternative to a Firebase ID token — timing-safe compare
-     (`crypto.timingSafeEqual`), only when env var set and ≥32 chars; resolve
-     identity by `adminAuth.getUserByEmail(<first allowlisted email>)` (cached)
-     so existing `userId`-scoped routes work unchanged.
-  2. Existing typed CRUD routes (`/api/answers*`) then work with the token —
-     read AND write (Zod-validated, same scope as the user; no superuser path).
-  3. Add read-only `POST /api/admin/find` (service-token ONLY): Zod body
-     `{ collection: enum["answers"], filter: plain field equality only (reject
-     $-operator keys), projection?, sort?, limit ≤ 200 }` for ad-hoc debugging.
-  4. Generate token (`openssl rand -hex 32`); set `SERVICE_API_TOKEN` in Vercel
-     prod env (via CLI, we have access); user adds it to the Claude environment
-     env vars for future sessions. Never committed; header-only (never in URLs).
-  5. Unit tests: token accept/reject/env-unset, find-schema operator rejection.
-  6. Deploy via main; verify from the sandbox with curl against brainshare.io
-     (200 with token, 401 without); confirm browser flow unaffected.
 - `[T13]` `unclaimed` — **Related-questions: vector/hybrid ranking (T06 follow-up).**
   Upgrade the keyword dropdown to hybrid search. Needs an infra decision
   (embeddings provider + vector store — Atlas Vector Search?), likely a server
@@ -60,6 +37,22 @@ commits) may be reclaimed. On completion, move the item to "Recently shipped".
 
 ## Recently shipped
 
+- [x] `[T25]` **Service-token API access to prod data — live and verified.**
+      `requireAuthorizedUser` accepts `Authorization: Bearer <SERVICE_API_TOKEN>`
+      (timing-safe, ≥32 chars) acting as the primary allowlisted user; new
+      read-only `POST /api/admin/find` (service-token only, equality-only
+      filters, `$` keys rejected, limit ≤ 200, hex `_id` auto-converted).
+      Identity resolves via `adminAuth.getUserByEmail`, falling back to the uid
+      on stored answers (prod has no Admin credentials — discovered live, fixed
+      in `3871bdc`). Token set in Vercel Production env via CLI. Verified
+      against brainshare.io: 200 + real data with token (typed route + find),
+      401 without/with wrong token, 400 for `$where` and unknown collections.
+      14 new unit tests; `pnpm verify` green. Documented in AGENTS.md → "Prod
+      Data Access (agents)". USER: add `SERVICE_API_TOKEN` to the Claude
+      environment env vars (value: Vercel dashboard or `vercel env pull`) so
+      future sessions can query prod.
+- [x] `[T26]` "Never wait" codified in AGENTS.md Working Agreement: deliver a
+      requested plan and immediately execute it; no pausing for approval.
 - [x] `[T24]` Planned token-based prod-data access over the API; concrete
       implementation steps captured as `[T25]` in Next. Key choices: reuse the
       deployed app's API (no new service), one static `SERVICE_API_TOKEN`
