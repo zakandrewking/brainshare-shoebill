@@ -11,9 +11,24 @@ never just the model name. Claim an item by setting the status to your handle
 and committing+pushing *before* you start work. If your push is rejected,
 someone claimed first — pull and pick another. Stale claims (>30 min, no new
 commits) may be reclaimed. On completion, move the item to "Recently shipped".
-**Next free id: T39.**
+**Next free id: T41.**
 
 ## Now
+
+- `[T39]` `claimed:claude-fable-5/q3x8@2026-06-12T03:04Z` — **"I'm not seeing
+  any cross-linking happening" — consciousness ↔ bat should be semantically
+  related.** Two gaps: (1) `[[topic]]` links only appear if the model emitted
+  the token AND it lexically matches another question — diagnose whether prod
+  answers even contain `[[...]]`; (2) cross-link resolution is lexical, not
+  semantic. Fix the visible half first: an automatic "Related" links row on
+  the answer card driven by the existing hybrid `/api/related` (question as
+  query) — entries cross-link with zero model cooperation.
+- `[T40]` `unclaimed` — **Semantic `[[topic]]` resolution.** When a model-
+  emitted `[[topic]]` doesn't match any question lexically, resolve it by
+  embedding similarity (new endpoint reusing the stored question embeddings;
+  client merges results into the live crosslink decorations, cached
+  per topic). Keeps the instant lexical path; semantic matches light up when
+  the lookup lands.
 
 - `[T37]` `wip:claude-fable-5/q3x8@2026-06-12T03:00Z` — **One live markdown
   answer surface (CodeMirror).** Replace the flip (rendered ⇄ editor) shipped
