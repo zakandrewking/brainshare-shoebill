@@ -13,11 +13,24 @@ someone claimed first — pull and pick another. Stale claims (>30 min, no new
 commits) may be reclaimed. On completion, move the item to "Awaiting
 confirmation" (shipped + verified, pending the user's check, with a one-line
 "how to check"); only the user's confirmation moves it to "Recently shipped".
-**Next free id: T55.**
+**Next free id: T56.**
 
 ## Now
 
-_(empty — claim the first actionable item in Next/Ideas)_
+- `[T55]` `wip:claude-fable-5/q3x8@2026-06-12T05:38Z` — **Regenerate must
+  preserve the user's text, attributed as theirs.** Design: extract the
+  user-authored segments (≥3 chars, ≤20 passages), send them with the
+  question; the model writes a fresh answer and emits `{{n}}` placeholders
+  where each passage fits (never echoing the words — echoed words would land
+  in the AI baseline and steal attribution). Client weaves the exact passages
+  into `currentText` while `aiText` gets the markers stripped, so the diff
+  marks them as user text again. Cases: model omits a marker → passage
+  appended at the end (never lost); repeated/invented markers → stripped,
+  first use wins; no user edits → plain regenerate; tiny edits (<3 chars,
+  e.g. pluralization) → dropped, unmergeable; passages containing marker
+  syntax → safe (single-pass token walk, no re-scan of substituted text).
+  PUT gains optional `currentText`; markers may flash in the streaming view
+  (cosmetic).
 
 ## Next
 - `[T50]` `unclaimed` — **Dark-mode + mobile visual review of the CodeMirror
