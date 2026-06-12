@@ -1,6 +1,7 @@
 import type { DecodedIdToken } from "firebase-admin/auth";
 
 import { adminAuth } from "@/lib/firebase/admin";
+import { getDatabase } from "@/lib/mongodb";
 import { isServiceToken } from "@/lib/service-token";
 
 export class AuthError extends Error {
@@ -52,6 +53,20 @@ async function lookupServiceUser(): Promise<AuthorizedUser> {
     const record = await adminAuth.getUserByEmail(email);
     return { uid: record.uid, email: record.email ?? email };
   } catch {
+    // Production has no Admin credentials (ID tokens are verified via public
+    // JWKS), so recover the uid from the user's stored answers instead.
+    const database = await getDatabase();
+    const existing = await database
+      .collection<{ userId: string }>("answers")
+      .findOne(
+        { userEmail: email },
+        { sort: { updatedAt: -1 }, projection: { userId: 1 } },
+      );
+
+    if (existing?.userId) {
+      return { uid: existing.userId, email };
+    }
+
     throw new AuthError("The service identity could not be resolved.", 403);
   }
 }
