@@ -17,12 +17,7 @@ confirmation" (shipped + verified, pending the user's check, with a one-line
 
 ## Now
 
-- `[T43]` `wip:claude-fable-5/q3x8@2026-06-12T05:12Z` — **(back from
-  Awaiting: user says it must work on mobile.)** Tapping a `[[topic]]`
-  decoration in the editor text on a touch device should navigate (resolved)
-  or start the suggested question (unresolved) — Obsidian-style: a clean tap
-  follows the link, scroll/drag/long-press still edit. Today only the chip
-  row works on mobile; in-text taps just place the cursor.
+_(empty — claim the first actionable item in Next/Ideas)_
 
 ## Next
 - `[T50]` `unclaimed` — **Dark-mode + mobile visual review of the CodeMirror
@@ -52,6 +47,12 @@ item to Recently shipped; a problem report moves it back to Now.)_
   lifecycle is now wip → Awaiting confirmation → Recently shipped (on your
   confirmation). CHECK: this section reads right to you.
 
+- `[T43]` (rev 2: now touch-native) `[[topic]]` links work in the editor text
+  on mobile: a clean tap follows a resolved link or opens the prefilled
+  question for an unresolved one; scrolls, drags, and long-presses still
+  edit. Desktop ⌘/Ctrl-click unchanged; chip row remains as a fallback.
+  CHECK on the phone: tap a dashed `[[topic]]` in an answer — the ask box
+  should fill and focus; tap a solid one — its entry opens.
 - `[T44]` Suggestion clicks keep the typed draft. CHECK: type a few words,
   click a dropdown suggestion — the entry opens below, input text unchanged.
 - `[T46]` One loading indicator while generating (header spinner only; all

@@ -1068,9 +1068,9 @@ export function AnswerWorkspace({ user }: { user: User }) {
                     </span>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Saves as you type — highlights are yours; ⌘/Ctrl-click a
-                    [[link]] to open its entry, or to start one if it’s
-                    missing.
+                    Saves as you type — highlights are yours; tap or
+                    ⌘/Ctrl-click a [[link]] to open its entry, or to start
+                    one if it’s missing.
                   </p>
                 </div>
               </CardContent>

@@ -160,6 +160,9 @@ export function LiveMarkdownEditor({
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
+  // Start of an in-progress touch, to tell a clean tap from a scroll/drag or
+  // long-press (which must keep their normal editing behavior).
+  const touchRef = useRef<{ x: number; y: number; time: number } | null>(null);
   // Latest props for CodeMirror callbacks without recreating the editor.
   const liveRef = useRef({
     onChange,
@@ -190,6 +193,56 @@ export function LiveMarkdownEditor({
             }
           }),
           EditorView.domEventHandlers({
+            // Touch devices have no meta-click: a clean tap on a [[link]]
+            // follows it (resolved) or seeds its question (unresolved),
+            // Obsidian-style. Scrolls, drags, and long-presses fall through
+            // to normal editing.
+            touchstart: (event) => {
+              const touch = event.touches[0];
+              touchRef.current = touch
+                ? { x: touch.clientX, y: touch.clientY, time: Date.now() }
+                : null;
+              return false;
+            },
+            touchend: (event, view) => {
+              const start = touchRef.current;
+              touchRef.current = null;
+              const touch = event.changedTouches[0];
+              if (!start || !touch) {
+                return false;
+              }
+              const moved = Math.hypot(
+                touch.clientX - start.x,
+                touch.clientY - start.y,
+              );
+              if (moved > 10 || Date.now() - start.time > 500) {
+                return false;
+              }
+              const pos = view.posAtCoords({
+                x: touch.clientX,
+                y: touch.clientY,
+              });
+              if (pos === null) {
+                return false;
+              }
+              const link = liveRef.current.crosslinks.find(
+                (range) => pos >= range.start && pos < range.end,
+              );
+              if (!link) {
+                return false;
+              }
+              // Don't also focus the editor / place the cursor.
+              event.preventDefault();
+              if (link.targetId && liveRef.current.onOpenCrosslink) {
+                liveRef.current.onOpenCrosslink(link.targetId);
+                return true;
+              }
+              if (!link.targetId && liveRef.current.onCreateCrosslink) {
+                liveRef.current.onCreateCrosslink(link.target);
+                return true;
+              }
+              return false;
+            },
             mousedown: (event, view) => {
               if (!event.metaKey && !event.ctrlKey) {
                 return false;
