@@ -13,11 +13,20 @@ someone claimed first — pull and pick another. Stale claims (>30 min, no new
 commits) may be reclaimed. On completion, move the item to "Awaiting
 confirmation" (shipped + verified, pending the user's check, with a one-line
 "how to check"); only the user's confirmation moves it to "Recently shipped".
-**Next free id: T56.**
+**Next free id: T57.**
 
 ## Now
 
-_(empty — claim the first actionable item in Next/Ideas)_
+- `[T56]` `wip:claude-fable-5/q3x8@2026-06-12T06:22Z` — **Versioning: revert
+  after editing or regenerating.** Bounded history on the answer doc (last
+  20 snapshots of {aiText, currentText, provider, model}, pushed atomically):
+  regenerate/revert always snapshot the displaced state; edit snapshots
+  coalesce (new checkpoint only if the last edit checkpoint is >10 min old —
+  autosave would otherwise spam one per pause; CM undo covers fine grain).
+  GET /api/answers/[id]/versions lists them; POST {restore: index} swaps the
+  version in (current state snapshotted first, so a revert is itself
+  revertible), recomputes attribution, invalidates the embedding. UI:
+  History panel on the answer card with per-version Restore.
 
 ## Next
 - `[T50]` `unclaimed` — **Dark-mode + mobile visual review of the CodeMirror
