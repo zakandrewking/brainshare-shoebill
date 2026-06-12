@@ -11,34 +11,41 @@ never just the model name. Claim an item by setting the status to your handle
 and committing+pushing *before* you start work. If your push is rejected,
 someone claimed first — pull and pick another. Stale claims (>30 min, no new
 commits) may be reclaimed. On completion, move the item to "Recently shipped".
-**Next free id: T29.**
+**Next free id: T30.**
 
 ## Now
 
-- `[T14]` `wip:claude-fable-5/q3x8@2026-06-12T02:09Z` (was: stale wip
-  claude-opus-4.8/ae44 released 2026-06-12; code is done — reclaimed to verify
-  the config checklist remotely via Vercel CLI + Firebase public config APIs
-  instead of waiting on the user) — **Prod GitHub login is still broken.** CODE DONE (pushed): auth-gate now (a) surfaces the real
-  Firebase error code instead of a generic message, (b) falls back from
-  `signInWithPopup` to `signInWithRedirect` on popup/COOP failures, and (c)
-  handles `getRedirectResult` + allowlist on return. Root cause is almost
-  certainly CONFIG (can't see/change from here). USER CHECKLIST: 1) Firebase →
-  Authentication → Settings → **Authorized domains** must include `brainshare.io`
-  (and `www.`/the vercel.app domain). 2) GitHub OAuth App **callback URL** =
-  `https://brainshare-a67c5.firebaseapp.com/__/auth/handler`. 3) Vercel
-  `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN` = `brainshare-a67c5.firebaseapp.com` (NOT
-  brainshare.io). 4) GitHub provider enabled in Firebase Auth. THEN retry and
-  report the error code now shown in the toast — it pinpoints which of the above.
+- `[T13]` `wip:claude-fable-5/q3x8@2026-06-12T02:20Z` — **Related-questions:
+  vector/hybrid ranking (T06 follow-up).** Upgrade the keyword dropdown to
+  hybrid search. Infra decision made (no new infra): embed questions with the
+  Vercel AI SDK `embed()` + OpenAI `text-embedding-3-small`, store the vector
+  on each answer doc, brute-force cosine server-side (corpus is tiny,
+  single-user; ANN/Atlas Vector Search deferred until scale demands it). New
+  endpoint embeds the typed query, blends cosine with the existing keyword
+  score, returns ranked ids; client debounces and falls back to local keyword
+  ranking on error. Mock provider gets a deterministic embedder so `dev:mock`
+  works.
 
 ## Next
 
-- `[T13]` `unclaimed` — **Related-questions: vector/hybrid ranking (T06 follow-up).**
-  Upgrade the keyword dropdown to hybrid search. Needs an infra decision
-  (embeddings provider + vector store — Atlas Vector Search?), likely a server
-  endpoint that embeds the query and ANN-searches stored question embeddings.
+_(empty — promote from Ideas when ready)_
 
 ## Recently shipped
 
+- [x] `[T14]` **Prod GitHub login: RESOLVED — verified working (2026-06-12).**
+      Remotely verified every item of the old user checklist: authorized
+      domains include `brainshare.io`/`www`/firebaseapp.com (public
+      identitytoolkit `getProjectConfig`), GitHub provider enabled
+      (`createAuthUri` returns a live authorize URL), GitHub OAuth callback
+      accepted (no `redirect_uri_mismatch` page), Vercel
+      `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=brainshare-a67c5.firebaseapp.com`
+      matches the live bundle's inlined config, `/__/auth/handler` + iframe
+      serve 200, no COOP headers on www.brainshare.io. agent-browser
+      click-through on prod reaches GitHub's sign-in page cleanly. Decisive
+      evidence: prod answers created/edited 01:01–01:52Z on 2026-06-12 — the
+      first two predate the service token's existence (first token commit
+      01:50Z), so they required real signed-in browser sessions. The earlier
+      auth-gate fix (error surfacing + popup→redirect fallback) stands.
 - [x] `[T28]` Session handoff saved (2026-06-12). State: prod-data API access
       (T24–T27) fully shipped and verified; `SERVICE_API_TOKEN` lives in Vercel
       Production (type `encrypted`) AND the Claude environment env vars; usage
@@ -207,3 +214,9 @@ commits) may be reclaimed. On completion, move the item to "Recently shipped".
 ## Ideas
 
 _(Unscheduled. Promote to Now/Next with a fresh id when ready.)_
+
+- `[T29]` `unclaimed` — **GitHub OAuth app name typo: "Brainshaire".** The
+  GitHub sign-in page says "Sign in to GitHub to continue to *Brainshaire*".
+  USER-ONLY fix: rename the OAuth app at github.com → Settings → Developer
+  settings → OAuth Apps (client id `149293a6eb61bdb60b87`). Cosmetic; no code
+  change.
