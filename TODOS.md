@@ -11,11 +11,16 @@ never just the model name. Claim an item by setting the status to your handle
 and committing+pushing *before* you start work. If your push is rejected,
 someone claimed first — pull and pick another. Stale claims (>30 min, no new
 commits) may be reclaimed. On completion, move the item to "Recently shipped".
-**Next free id: T46.**
+**Next free id: T47.**
 
 ## Now
 
-_(empty — claim the first actionable item in Next/Ideas)_
+- `[T46]` `wip:claude-fable-5/q3x8@2026-06-12T04:23Z` — **One loading
+  indicator when generating.** Today the thinking phase shows two spinners
+  (Generate button + card header) and up to three ellipsis texts
+  ("Generating...", "Thinking…", "Forming an answer…"). Keep ONE spinner (the
+  streaming card header), make every label static (no "…"), and keep the
+  thinking section static.
 
 ## Next
 
