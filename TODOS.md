@@ -15,16 +15,7 @@ commits) may be reclaimed. On completion, move the item to "Recently shipped".
 
 ## Now
 
-- `[T13]` `wip:claude-fable-5/q3x8@2026-06-12T02:20Z` — **Related-questions:
-  vector/hybrid ranking (T06 follow-up).** Upgrade the keyword dropdown to
-  hybrid search. Infra decision made (no new infra): embed questions with the
-  Vercel AI SDK `embed()` + OpenAI `text-embedding-3-small`, store the vector
-  on each answer doc, brute-force cosine server-side (corpus is tiny,
-  single-user; ANN/Atlas Vector Search deferred until scale demands it). New
-  endpoint embeds the typed query, blends cosine with the existing keyword
-  score, returns ranked ids; client debounces and falls back to local keyword
-  ranking on error. Mock provider gets a deterministic embedder so `dev:mock`
-  works.
+_(empty — claim the first actionable item in Next/Ideas)_
 
 ## Next
 
@@ -32,6 +23,23 @@ _(empty — promote from Ideas when ready)_
 
 ## Recently shipped
 
+- [x] `[T13]` **Hybrid related-questions shipped + verified live (2026-06-12).**
+      Questions are embedded server-side (AI SDK `embedMany` + OpenAI
+      `text-embedding-3-small` at 256 dims; deterministic local embedder under
+      `AI_PROVIDER=mock`), stored on the answer doc with an
+      `embeddingModel` tag (`openai/text-embedding-3-small@256`) so stale
+      vectors re-embed. New `POST /api/related` embeds the typed query +
+      lazily backfills missing candidate vectors in one batch, ranks via pure
+      `rankRelatedHybrid` (0.6·cosine + 0.4·normalized keyword, cosine floor
+      0.3 for zero-keyword matches; degrades to keyword-only without a
+      backend). Workspace debounces (250 ms) to the endpoint, keeps instant
+      local keyword results as fallback. No new infra — brute-force cosine
+      over the tiny corpus; ANN/Atlas Vector Search deferred until scale
+      demands it. 14 new tests; `pnpm verify` green. Verified on prod:
+      "compassion toward people you do not know" → "should i be kind to
+      strangers?", "the subjective experience of animals" → "whats it like to
+      be a bat" (zero keyword overlap), 401 unauthorized, all 3 prod docs
+      backfilled with vectors.
 - [x] `[T14]` **Prod GitHub login: RESOLVED — verified working (2026-06-12).**
       Remotely verified every item of the old user checklist: authorized
       domains include `brainshare.io`/`www`/firebaseapp.com (public
