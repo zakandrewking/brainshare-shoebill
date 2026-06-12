@@ -11,11 +11,24 @@ never just the model name. Claim an item by setting the status to your handle
 and committing+pushing *before* you start work. If your push is rejected,
 someone claimed first — pull and pick another. Stale claims (>30 min, no new
 commits) may be reclaimed. On completion, move the item to "Recently shipped".
-**Next free id: T33.**
+**Next free id: T35.**
 
 ## Now
 
-_(empty — claim the first actionable item in Next/Ideas)_
+- `[T33]` `wip:claude-fable-5/q3x8@2026-06-12T02:44Z` — **Merge the "Rendered
+  answer" and "Edit answer" cards into one Answer section.** One card, one
+  surface: rendered literary prose by default; focusing/clicking flips the
+  same well to the HighlightedEditor (attribution intact), blurring flips
+  back to the rendered view. Header keeps provider badge + Regenerate;
+  footer keeps attribution stats + save state + Save.
+- `[T34]` `wip:claude-fable-5/q3x8@2026-06-12T02:44Z` — **Cross-linking must
+  feel instantaneous and update in real time (refines T33).** Rendered
+  crosslinks already resolve client-side per keystroke; keep that property in
+  the merged single-surface design: while editing, decorate resolved
+  `[[topic]]` spans live inside the editor mirror (color/underline — raw text
+  unchanged so highlight alignment holds), and the on-blur rendered view
+  shows full clickable links with zero delay (pure client-side resolution, no
+  network).
 
 ## Next
 
