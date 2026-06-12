@@ -100,6 +100,13 @@ const markdownHighlight = HighlightStyle.define([
 const editorTheme = EditorView.theme({
   "&": { backgroundColor: "transparent", fontSize: "inherit" },
   "&.cm-focused": { outline: "none" },
+  // CodeMirror's base theme forces monospace on the scroller; "inherit" on
+  // .cm-content resolves against it, not our wrapper. Re-inherit here so the
+  // editor keeps the .literary-prose serif the streamed view used.
+  ".cm-scroller": {
+    fontFamily: "inherit",
+    lineHeight: "inherit",
+  },
   ".cm-content": {
     fontFamily: "inherit",
     lineHeight: "inherit",

@@ -11,16 +11,11 @@ never just the model name. Claim an item by setting the status to your handle
 and committing+pushing *before* you start work. If your push is rejected,
 someone claimed first — pull and pick another. Stale claims (>30 min, no new
 commits) may be reclaimed. On completion, move the item to "Recently shipped".
-**Next free id: T47.**
+**Next free id: T48.**
 
 ## Now
 
-- `[T46]` `wip:claude-fable-5/q3x8@2026-06-12T04:23Z` — **One loading
-  indicator when generating.** Today the thinking phase shows two spinners
-  (Generate button + card header) and up to three ellipsis texts
-  ("Generating...", "Thinking…", "Forming an answer…"). Keep ONE spinner (the
-  streaming card header), make every label static (no "…"), and keep the
-  thinking section static.
+_(empty — claim the first actionable item in Next/Ideas)_
 
 ## Next
 
@@ -28,6 +23,17 @@ _(empty — promote from Ideas when ready)_
 
 ## Recently shipped
 
+- [x] `[T46]` One loading indicator while generating: the streaming card
+      header keeps the sole spinner; Generate/Regenerate/Save buttons lost
+      their spinners and ellipses (static "Generating"/"Regenerating"/
+      "Saving"), header reads "Thinking" (no "…"), placeholder well is a
+      static "The answer will stream here.", thinking details stays static
+      and collapsed.
+- [x] `[T47]` Fixed the serif→monospace font jump when generation finishes:
+      CodeMirror's base theme forces monospace on `.cm-scroller`, so
+      `.cm-content`'s "inherit" resolved against it instead of the
+      `.literary-prose` wrapper. The theme now re-inherits on `.cm-scroller`;
+      the editor matches the streamed view's literary serif.
 - [x] `[T45]` Clear-input button: ghost ✕ in the question box's top-right
       (visible only with text, hidden while generating) empties the input
       and keeps focus; textarea gains right padding so text never runs

@@ -787,12 +787,8 @@ export function AnswerWorkspace({ user }: { user: User }) {
                 onClick={generate}
                 disabled={isGenerating}
               >
-                {isGenerating ? (
-                  <LoaderCircleIcon className="animate-spin" />
-                ) : (
-                  <SendIcon />
-                )}
-                {isGenerating ? "Generating..." : "Generate answer"}
+                <SendIcon />
+                {isGenerating ? "Generating" : "Generate answer"}
               </Button>
             </div>
           </CardContent>
@@ -802,13 +798,14 @@ export function AnswerWorkspace({ user }: { user: User }) {
           <Card>
             <CardHeader>
               <div className="flex items-center gap-2">
+                {/* The one and only loading indicator while generating. */}
                 <LoaderCircleIcon className="size-4 animate-spin" />
                 <CardTitle>
                   {streamingText
                     ? isRegenerating
                       ? "Regenerating"
                       : "Writing"
-                    : "Thinking…"}
+                    : "Thinking"}
                 </CardTitle>
               </div>
             </CardHeader>
@@ -838,7 +835,7 @@ export function AnswerWorkspace({ user }: { user: User }) {
                 </div>
               ) : (
                 <div className="retro-sunken flex min-h-40 items-center justify-center p-5 text-sm text-muted-foreground">
-                  {streamingReasoning ? "Forming an answer…" : "Thinking…"}
+                  The answer will stream here.
                 </div>
               )}
             </CardContent>
@@ -863,12 +860,8 @@ export function AnswerWorkspace({ user }: { user: User }) {
                       onClick={regenerate}
                       disabled={isGenerating || isRegenerating}
                     >
-                      {isRegenerating ? (
-                        <LoaderCircleIcon className="animate-spin" />
-                      ) : (
-                        <RefreshCwIcon />
-                      )}
-                      {isRegenerating ? "Regenerating..." : "Regenerate"}
+                      <RefreshCwIcon />
+                      {isRegenerating ? "Regenerating" : "Regenerate"}
                     </Button>
                   </div>
                 </div>
@@ -961,7 +954,7 @@ export function AnswerWorkspace({ user }: { user: User }) {
                       ) : (
                         <SaveIcon />
                       )}
-                      {isSaving ? "Saving..." : "Save changes"}
+                      {isSaving ? "Saving" : "Save changes"}
                     </Button>
                   </div>
                 </div>
