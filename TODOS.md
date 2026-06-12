@@ -17,16 +17,7 @@ confirmation" (shipped + verified, pending the user's check, with a one-line
 
 ## Now
 
-- `[T56]` `wip:claude-fable-5/q3x8@2026-06-12T06:22Z` — **Versioning: revert
-  after editing or regenerating.** Bounded history on the answer doc (last
-  20 snapshots of {aiText, currentText, provider, model}, pushed atomically):
-  regenerate/revert always snapshot the displaced state; edit snapshots
-  coalesce (new checkpoint only if the last edit checkpoint is >10 min old —
-  autosave would otherwise spam one per pause; CM undo covers fine grain).
-  GET /api/answers/[id]/versions lists them; POST {restore: index} swaps the
-  version in (current state snapshotted first, so a revert is itself
-  revertible), recomputes attribution, invalidates the embedding. UI:
-  History panel on the answer card with per-version Restore.
+_(empty — claim the first actionable item in Next/Ideas)_
 
 ## Next
 - `[T50]` `unclaimed` — **Dark-mode + mobile visual review of the CodeMirror
@@ -56,6 +47,17 @@ item to Recently shipped; a problem report moves it back to Now.)_
   lifecycle is now wip → Awaiting confirmation → Recently shipped (on your
   confirmation). CHECK: this section reads right to you.
 
+- `[T56]` Versioning with revert. Every answer keeps its last 20 versions:
+  regenerate and restore always snapshot the state they displace; edits
+  checkpoint at most every 10 minutes (autosave would otherwise spam; ⌘Z in
+  the editor covers fine grain — the first edit after a regenerate always
+  snapshots, so the fresh baseline is never lost). New History button on the
+  answer card lists versions newest-first (one-line preview, kind,
+  timestamp) with Restore; restoring snapshots the current state first, so
+  a restore is itself revertible. Attribution recomputed and embedding
+  invalidated on restore. Verified live on prod (edit → checkpoint → restore
+  → original text back, history shows both versions). CHECK: edit an answer,
+  open History, Restore the checkpoint — your pre-edit text returns.
 - `[T55]` Regenerate preserves your text, attributed as yours. Your passages
   (user segments ≥3 chars, ≤20) go into the prompt; the model is told to
   build its prose AROUND them as fixed verbatim islands — sentences leading

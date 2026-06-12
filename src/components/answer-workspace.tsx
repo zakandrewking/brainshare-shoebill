@@ -6,6 +6,7 @@ import { signOut, type User } from "firebase/auth";
 import {
   CheckIcon,
   CornerUpLeftIcon,
+  HistoryIcon,
   LayersIcon,
   LinkIcon,
   LoaderCircleIcon,
@@ -68,6 +69,19 @@ async function authenticatedFetch(
   });
 }
 
+type AnswerVersionRow = {
+  index: number;
+  kind: "edit" | "regenerate" | "revert";
+  currentText: string;
+  capturedAt: string;
+};
+
+const VERSION_KIND_LABELS: Record<AnswerVersionRow["kind"], string> = {
+  edit: "Edit checkpoint",
+  regenerate: "Before regenerate",
+  revert: "Before restore",
+};
+
 async function readError(response: Response) {
   try {
     const body = (await response.json()) as { error?: string };
@@ -107,6 +121,10 @@ export function AnswerWorkspace({ user }: { user: User }) {
   const [answerRelated, setAnswerRelated] = useState<
     { id: string; question: string }[]
   >([]);
+  // Revert history for the open answer; null until fetched.
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [versions, setVersions] = useState<AnswerVersionRow[] | null>(null);
+  const [isRestoring, setIsRestoring] = useState(false);
   const [submissions, setSubmissions] = useState<SerializedAnswer[]>([]);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [questionFocused, setQuestionFocused] = useState(false);
@@ -330,6 +348,8 @@ export function AnswerWorkspace({ user }: { user: User }) {
       // (shown collapsed on the answer) but not switching submissions.
       setStreamingReasoning("");
       setAnswerRelated([]);
+      setHistoryOpen(false);
+      setVersions(null);
       setIsSaved(true);
     },
     [],
@@ -384,6 +404,72 @@ export function AnswerWorkspace({ user }: { user: User }) {
     selectSubmission(null);
     pushAnswerUrl(null);
     setSheetOpen(false);
+  }
+
+  async function loadVersions(answerId: string) {
+    try {
+      const response = await authenticatedFetch(
+        user,
+        `/api/answers/${answerId}/versions`,
+      );
+      if (!response.ok) {
+        throw new Error(await readError(response));
+      }
+      const body = (await response.json()) as {
+        versions: AnswerVersionRow[];
+      };
+      setVersions(body.versions);
+    } catch (error) {
+      console.error(error);
+      toast.error(describeActionError(error, "loading the history"));
+    }
+  }
+
+  function toggleHistory() {
+    if (!answer) return;
+    const opening = !historyOpen;
+    setHistoryOpen(opening);
+    if (opening) {
+      setVersions(null);
+      void loadVersions(answer.id);
+    }
+  }
+
+  async function restoreVersion(index: number) {
+    if (!answer) return;
+    setIsRestoring(true);
+    try {
+      const response = await authenticatedFetch(
+        user,
+        `/api/answers/${answer.id}/versions`,
+        {
+          method: "POST",
+          body: JSON.stringify({ restore: index }),
+        },
+      );
+      if (!response.ok) {
+        throw new Error(await readError(response));
+      }
+      const body = (await response.json()) as { answer: SerializedAnswer };
+      setAnswer(body.answer);
+      setCurrentText(body.answer.currentText);
+      setIsSaved(true);
+      setSubmissions((previous) => {
+        const next = previous.map((submission) =>
+          submission.id === body.answer.id ? body.answer : submission,
+        );
+        submissionsRef.current = next;
+        return next;
+      });
+      toast.success("Earlier version restored.");
+      // Indices shift after the restore snapshot; refresh the list.
+      void loadVersions(body.answer.id);
+    } catch (error) {
+      console.error(error);
+      toast.error(describeActionError(error, "restoring the version"));
+    } finally {
+      setIsRestoring(false);
+    }
   }
 
   // A [[topic]] without an entry becomes the seed of one: open a fresh
@@ -950,10 +1036,63 @@ export function AnswerWorkspace({ user }: { user: User }) {
                       <RefreshCwIcon />
                       {isRegenerating ? "Regenerating" : "Regenerate"}
                     </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      aria-pressed={historyOpen}
+                      onClick={toggleHistory}
+                      disabled={isRegenerating}
+                    >
+                      <HistoryIcon />
+                      History
+                    </Button>
                   </div>
                 </div>
               </CardHeader>
               <CardContent className="space-y-3">
+                {historyOpen ? (
+                  <div className="retro-sunken space-y-2 p-3 text-sm">
+                    <p className="text-xs font-medium text-muted-foreground">
+                      History — restoring swaps a version back in (the current
+                      state is kept as a new version)
+                    </p>
+                    {versions === null ? (
+                      <p className="text-xs text-muted-foreground">
+                        Loading versions
+                      </p>
+                    ) : versions.length === 0 ? (
+                      <p className="text-xs text-muted-foreground">
+                        No earlier versions yet — they appear after edits,
+                        regenerations, and restores.
+                      </p>
+                    ) : (
+                      [...versions].reverse().map((version) => (
+                        <div
+                          key={version.index}
+                          className="flex items-center justify-between gap-3"
+                        >
+                          <div className="min-w-0 flex-1">
+                            <p className="line-clamp-1">
+                              {version.currentText}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {VERSION_KIND_LABELS[version.kind]} ·{" "}
+                              {new Date(version.capturedAt).toLocaleString()}
+                            </p>
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={isRestoring}
+                            onClick={() => restoreVersion(version.index)}
+                          >
+                            Restore
+                          </Button>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                ) : null}
                 {streamingReasoning && !isGenerating && !isRegenerating ? (
                   <details className="retro-sunken p-3 text-sm">
                     <summary className="cursor-pointer font-medium text-muted-foreground">

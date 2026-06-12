@@ -6,6 +6,12 @@ import {
 } from "@/lib/attribution";
 import { getDatabase } from "@/lib/mongodb";
 import type { SerializedAnswer } from "@/lib/types";
+import {
+  MAX_VERSIONS,
+  shouldSnapshotBeforeEdit,
+  type AnswerVersion,
+  type VersionKind,
+} from "@/lib/versioning";
 
 export type AnswerDocument = {
   userId: string;
@@ -21,9 +27,28 @@ export type AnswerDocument = {
   // never changes after creation, so the vector is written once per model.
   questionEmbedding?: number[] | null;
   embeddingModel?: string | null;
+  // Bounded revert history (see lib/versioning); excluded from list payloads.
+  versions?: AnswerVersion[];
   createdAt: Date;
   updatedAt: Date;
 };
+
+// Snapshot of the state an operation is about to displace.
+function snapshotOf(
+  existing: AnswerDocument,
+  kind: VersionKind,
+  capturedAt: Date,
+): AnswerVersion {
+  return {
+    kind,
+    aiText: existing.aiText,
+    currentText: existing.currentText,
+    provider: existing.provider,
+    model: existing.model,
+    stateUpdatedAt: existing.updatedAt,
+    capturedAt,
+  };
+}
 
 function serializeAnswer(
   answer: WithId<AnswerDocument>,
@@ -76,7 +101,7 @@ export async function createAnswer(
 export async function listAnswers(userId: string) {
   const collection = await answersCollection();
   const documents = await collection
-    .find({ userId })
+    .find({ userId }, { projection: { versions: 0 } })
     .sort({ updatedAt: -1 })
     .toArray();
 
@@ -153,9 +178,19 @@ export async function updateAnswer(
 
   const updatedAt = new Date();
   const segments = attributeText(existing.aiText, currentText);
+  // Checkpoint the pre-edit state, coalesced so autosave doesn't spam one
+  // snapshot per keystroke pause.
+  const snapshot = shouldSnapshotBeforeEdit(existing.versions, updatedAt)
+    ? snapshotOf(existing, "edit", updatedAt)
+    : null;
   await collection.updateOne(
     { _id: existing._id, userId },
-    { $set: { currentText, segments, updatedAt } },
+    {
+      $set: { currentText, segments, updatedAt },
+      ...(snapshot
+        ? { $push: { versions: { $each: [snapshot], $slice: -MAX_VERSIONS } } }
+        : {}),
+    },
   );
 
   return serializeAnswer({
@@ -210,6 +245,13 @@ export async function regenerateAnswer(
         embeddingModel: null,
         updatedAt,
       },
+      // The pre-regenerate state is always worth a revert point.
+      $push: {
+        versions: {
+          $each: [snapshotOf(existing, "regenerate", updatedAt)],
+          $slice: -MAX_VERSIONS,
+        },
+      },
     },
   );
 
@@ -220,6 +262,105 @@ export async function regenerateAnswer(
     segments,
     provider,
     model,
+    updatedAt,
+  });
+}
+
+export type SerializedAnswerVersion = {
+  index: number;
+  kind: AnswerVersion["kind"];
+  aiText: string;
+  currentText: string;
+  provider: string;
+  model: string;
+  stateUpdatedAt: string;
+  capturedAt: string;
+};
+
+export async function listAnswerVersions(
+  id: string,
+  userId: string,
+): Promise<SerializedAnswerVersion[] | null> {
+  if (!ObjectId.isValid(id)) {
+    return null;
+  }
+
+  const collection = await answersCollection();
+  const document = await collection.findOne(
+    { _id: new ObjectId(id), userId },
+    { projection: { versions: 1 } },
+  );
+  if (!document) {
+    return null;
+  }
+
+  return (document.versions ?? []).map((version, index) => ({
+    index,
+    kind: version.kind,
+    aiText: version.aiText,
+    currentText: version.currentText,
+    provider: version.provider,
+    model: version.model,
+    stateUpdatedAt: new Date(version.stateUpdatedAt).toISOString(),
+    capturedAt: new Date(version.capturedAt).toISOString(),
+  }));
+}
+
+/**
+ * Swap a stored version back in. The displaced (current) state is snapshotted
+ * first, so a revert is itself revertible. Attribution is recomputed from the
+ * restored pair and the embedding invalidated (the baseline may change).
+ */
+export async function revertAnswer(id: string, userId: string, index: number) {
+  if (!ObjectId.isValid(id)) {
+    return null;
+  }
+
+  const collection = await answersCollection();
+  const existing = await collection.findOne({
+    _id: new ObjectId(id),
+    userId,
+  });
+  if (!existing) {
+    return null;
+  }
+
+  const version = existing.versions?.[index];
+  if (!version) {
+    return null;
+  }
+
+  const updatedAt = new Date();
+  const segments = attributeText(version.aiText, version.currentText);
+  await collection.updateOne(
+    { _id: existing._id, userId },
+    {
+      $set: {
+        aiText: version.aiText,
+        currentText: version.currentText,
+        segments,
+        provider: version.provider,
+        model: version.model,
+        questionEmbedding: null,
+        embeddingModel: null,
+        updatedAt,
+      },
+      $push: {
+        versions: {
+          $each: [snapshotOf(existing, "revert", updatedAt)],
+          $slice: -MAX_VERSIONS,
+        },
+      },
+    },
+  );
+
+  return serializeAnswer({
+    ...existing,
+    aiText: version.aiText,
+    currentText: version.currentText,
+    segments,
+    provider: version.provider,
+    model: version.model,
     updatedAt,
   });
 }
