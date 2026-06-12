@@ -11,11 +11,19 @@ never just the model name. Claim an item by setting the status to your handle
 and committing+pushing *before* you start work. If your push is rejected,
 someone claimed first — pull and pick another. Stale claims (>30 min, no new
 commits) may be reclaimed. On completion, move the item to "Recently shipped".
-**Next free id: T41.**
+**Next free id: T42.**
 
 ## Now
 
-_(empty — claim the first actionable item in Next/Ideas)_
+- `[T41]` `wip:claude-fable-5/q3x8@2026-06-12T03:25Z` — **Embed question +
+  answer text, not the bare question.** Live prod cosine matrix (stored
+  vectors) shows bat ↔ consciousness at 0.043 — question-only embeddings
+  can't encode the Nagel link, so no threshold connects them without noise
+  (next unrelated pairs sit at ~0.26–0.29). Answer texts DO connect them.
+  Fix: embedding input becomes `question + aiText` (truncated), bump the
+  embeddingModel tag (`…@256+qa`) so every stored vector lazily re-embeds,
+  null the vector on regenerate, and verify bat ↔ consciousness ranks in
+  Related + `[[topic]]` resolution on prod.
 
 ## Next
 
