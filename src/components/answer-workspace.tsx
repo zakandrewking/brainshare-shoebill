@@ -89,12 +89,53 @@ export function AnswerWorkspace({ user }: { user: User }) {
   const submissionsRef = useRef<SerializedAnswer[]>([]);
 
   // Prior questions related to what's being typed, surfaced as autocomplete.
+  // The local keyword ranking renders instantly; the server's hybrid
+  // (keyword + embedding) ranking replaces it when it arrives.
   const relatedQuestions = useMemo(
     () => findRelatedQuestions(question, submissions, { excludeId: answer?.id }),
     [question, submissions, answer?.id],
   );
+  const [serverRelated, setServerRelated] = useState<{
+    query: string;
+    items: { id: string; question: string }[];
+  } | null>(null);
+  // Latest debounced query; an in-flight response for anything else is stale.
+  const relatedQueryRef = useRef("");
+
+  useEffect(() => {
+    const query = question.trim();
+    if (!questionFocused || isGenerating || query.length < 2) {
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      relatedQueryRef.current = query;
+      try {
+        const response = await authenticatedFetch(user, "/api/related", {
+          method: "POST",
+          body: JSON.stringify({ query, excludeId: answer?.id }),
+        });
+        if (!response.ok || relatedQueryRef.current !== query) {
+          return;
+        }
+        const body = (await response.json()) as {
+          questions: { id: string; question: string }[];
+        };
+        setServerRelated({ query, items: body.questions });
+      } catch (error) {
+        // Keep the local keyword suggestions on a failed fetch.
+        console.error(error);
+      }
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [question, questionFocused, isGenerating, answer?.id, user]);
+
+  const displayedRelated =
+    serverRelated && serverRelated.query === question.trim()
+      ? serverRelated.items
+      : relatedQuestions;
   const showRelated =
-    questionFocused && !isGenerating && relatedQuestions.length > 0;
+    questionFocused && !isGenerating && displayedRelated.length > 0;
 
   const segments = useMemo(
     () => (answer ? attributeText(answer.aiText, currentText) : []),
@@ -557,7 +598,7 @@ export function AnswerWorkspace({ user }: { user: User }) {
                   <p className="px-3 py-1 text-xs font-medium text-muted-foreground">
                     Related questions
                   </p>
-                  {relatedQuestions.map((related) => (
+                  {displayedRelated.map((related) => (
                     <button
                       key={related.id}
                       type="button"

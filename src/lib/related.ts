@@ -13,6 +13,11 @@ const STOPWORDS = new Set([
 
 type RelatedCandidate = Pick<SerializedAnswer, "id" | "question">;
 
+export type HybridCandidate = RelatedCandidate & {
+  /** Stored question embedding; null/undefined falls back to keyword-only. */
+  embedding?: number[] | null;
+};
+
 export type RelatedOptions = {
   /** Max suggestions to return. Defaults to 5. */
   limit?: number;
@@ -38,6 +43,44 @@ function tokenize(text: string): Set<string> {
     }
   }
   return tokens;
+}
+
+// Awarded on top of per-token overlap when the typed query appears verbatim
+// inside a past question; also the keyword score's normalization headroom.
+const SUBSTRING_BOOST = 5;
+
+// Shared significant words plus a substring boost (see findRelatedQuestions).
+function keywordScore(
+  queryTokens: Set<string>,
+  normalizedQuery: string,
+  question: string,
+): number {
+  let score = 0;
+  const questionTokens = tokenize(question);
+  for (const token of queryTokens) {
+    if (questionTokens.has(token)) {
+      score += 1;
+    }
+  }
+  if (normalize(question).includes(normalizedQuery)) {
+    score += SUBSTRING_BOOST;
+  }
+  return score;
+}
+
+function cosine(a: number[], b: number[]): number {
+  if (a.length !== b.length || a.length === 0) {
+    return 0;
+  }
+  let dot = 0;
+  let normA = 0;
+  let normB = 0;
+  for (let i = 0; i < a.length; i += 1) {
+    dot += a[i] * b[i];
+    normA += a[i] * a[i];
+    normB += b[i] * b[i];
+  }
+  return normA === 0 || normB === 0 ? 0 : dot / Math.sqrt(normA * normB);
 }
 
 /**
@@ -66,24 +109,11 @@ export function findRelatedQuestions(
   const scored = submissions
     .filter((submission) => submission.id !== excludeId)
     .map((submission, index) => {
-      const normalizedQuestion = normalize(submission.question);
       // Skip an entry identical to what's typed — there's nothing to surface.
-      if (normalizedQuestion === normalizedQuery) {
-        return { submission, index, score: 0 };
-      }
-
-      let score = 0;
-      const questionTokens = tokenize(submission.question);
-      for (const token of queryTokens) {
-        if (questionTokens.has(token)) {
-          score += 1;
-        }
-      }
-      // Prefix/substring boost: typing the start of a past question surfaces it.
-      if (normalizedQuestion.includes(normalizedQuery)) {
-        score += 5;
-      }
-
+      const score =
+        normalize(submission.question) === normalizedQuery
+          ? 0
+          : keywordScore(queryTokens, normalizedQuery, submission.question);
       return { submission, index, score };
     })
     .filter((entry) => entry.score > 0);
@@ -91,4 +121,61 @@ export function findRelatedQuestions(
   scored.sort((a, b) => b.score - a.score || a.index - b.index);
 
   return scored.slice(0, limit).map((entry) => entry.submission);
+}
+
+// Below this cosine, a candidate with zero keyword overlap is considered
+// unrelated noise rather than a semantic match.
+const MIN_VECTOR_SCORE = 0.3;
+
+/**
+ * Rank candidates by a blend of embedding cosine similarity and the keyword
+ * score (vector-weighted, since semantics is what the keyword half misses).
+ * Pure: embeddings are computed by the caller. Candidates or queries without
+ * an embedding degrade gracefully to their keyword score, and a missing
+ * `queryEmbedding` reduces to keyword-only ranking, so the function behaves
+ * identically whether or not an embedding backend is configured.
+ */
+export function rankRelatedHybrid(
+  query: string,
+  queryEmbedding: number[] | null,
+  candidates: HybridCandidate[],
+  options: RelatedOptions = {},
+): RelatedCandidate[] {
+  const { limit = 5, excludeId } = options;
+  const normalizedQuery = normalize(query);
+  if (normalizedQuery.length < 2) {
+    return [];
+  }
+
+  const queryTokens = tokenize(query);
+
+  const scored = candidates
+    .filter((candidate) => candidate.id !== excludeId)
+    .map((candidate, index) => {
+      if (normalize(candidate.question) === normalizedQuery) {
+        return { candidate, index, score: 0 };
+      }
+
+      const keyword = keywordScore(queryTokens, normalizedQuery, candidate.question);
+      // Normalize to ~[0,1] against the best possible score for this query.
+      const keywordNormalized =
+        keyword / (queryTokens.size + SUBSTRING_BOOST || 1);
+
+      const similarity =
+        queryEmbedding && candidate.embedding
+          ? Math.max(0, cosine(queryEmbedding, candidate.embedding))
+          : 0;
+
+      const related = keyword > 0 || similarity >= MIN_VECTOR_SCORE;
+      const score = related ? 0.6 * similarity + 0.4 * keywordNormalized : 0;
+      return { candidate, index, score };
+    })
+    .filter((entry) => entry.score > 0);
+
+  scored.sort((a, b) => b.score - a.score || a.index - b.index);
+
+  return scored.slice(0, limit).map(({ candidate }) => ({
+    id: candidate.id,
+    question: candidate.question,
+  }));
 }

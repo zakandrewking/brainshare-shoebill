@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { createAnswer, listAnswers } from "@/lib/answers";
 import { AuthError, requireAuthorizedUser } from "@/lib/auth";
+import { embedQuestions, getEmbeddingConfig } from "@/lib/embedding";
 
 export const runtime = "nodejs";
 
@@ -41,6 +42,21 @@ export async function POST(request: Request) {
     const { question, aiText, provider, model } = requestSchema.parse(
       await request.json(),
     );
+
+    // Embed the question for related-question ranking. Never block saving on
+    // it — a failed or disabled embedding is backfilled lazily by /api/related.
+    let questionEmbedding: number[] | null = null;
+    let embeddingModel: string | null = null;
+    try {
+      const embeddings = await embedQuestions([question]);
+      if (embeddings) {
+        questionEmbedding = embeddings[0];
+        embeddingModel = getEmbeddingConfig().model;
+      }
+    } catch (error) {
+      console.error("[answers] question embedding failed:", error);
+    }
+
     const answer = await createAnswer({
       userId: user.uid,
       userEmail: user.email!,
@@ -49,6 +65,8 @@ export async function POST(request: Request) {
       currentText: aiText,
       provider,
       model,
+      questionEmbedding,
+      embeddingModel,
     });
 
     return NextResponse.json({ answer }, { status: 201 });

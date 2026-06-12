@@ -16,6 +16,11 @@ export type AnswerDocument = {
   segments: AttributionSegment[];
   provider: string;
   model: string;
+  // Question embedding for related-question ranking; absent until computed
+  // (created before the feature, or the embedding call failed). The question
+  // never changes after creation, so the vector is written once per model.
+  questionEmbedding?: number[] | null;
+  embeddingModel?: string | null;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -43,6 +48,13 @@ async function answersCollection() {
   return database.collection<AnswerDocument>("answers");
 }
 
+export type RelatedCandidateDocument = {
+  id: string;
+  question: string;
+  embedding: number[] | null;
+  embeddingModel: string | null;
+};
+
 export async function createAnswer(
   answer: Omit<AnswerDocument, "segments" | "createdAt" | "updatedAt">,
 ) {
@@ -67,6 +79,47 @@ export async function listAnswers(userId: string) {
     .toArray();
 
   return documents.map(serializeAnswer);
+}
+
+// Lean projection for related-question ranking: ids, questions, and stored
+// embeddings only — full documents (and their vectors) never reach the client.
+export async function listRelatedCandidates(
+  userId: string,
+): Promise<RelatedCandidateDocument[]> {
+  const collection = await answersCollection();
+  const documents = await collection
+    .find(
+      { userId },
+      { projection: { question: 1, questionEmbedding: 1, embeddingModel: 1 } },
+    )
+    .sort({ updatedAt: -1 })
+    .toArray();
+
+  return documents.map((document) => ({
+    id: document._id.toHexString(),
+    question: document.question,
+    embedding: document.questionEmbedding ?? null,
+    embeddingModel: document.embeddingModel ?? null,
+  }));
+}
+
+// Lazy backfill: answers created before embeddings existed (or whose vector
+// came from a different model) get re-embedded by the related endpoint.
+export async function setQuestionEmbedding(
+  id: string,
+  userId: string,
+  embedding: number[],
+  embeddingModel: string,
+) {
+  if (!ObjectId.isValid(id)) {
+    return;
+  }
+
+  const collection = await answersCollection();
+  await collection.updateOne(
+    { _id: new ObjectId(id), userId },
+    { $set: { questionEmbedding: embedding, embeddingModel } },
+  );
 }
 
 export async function updateAnswer(
