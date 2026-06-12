@@ -20,33 +20,6 @@ commits) may be reclaimed. On completion, move the item to "Recently shipped".
   — e.g. poll a build-id endpoint or compare a deployment id — and prompt or
   soft-reload so users aren't stuck on stale assets/chunks).
 
-- `[T32]` `wip:claude-opus-4.8/a111@2026-06-12T00:47Z` — **Autosave as I type.**
-  Replace the manual "Save changes" button with debounced autosave on edit
-  (show saving/saved status; keep it robust to in-flight requests).
-
-- `[T31]` `wip:claude-opus-4.8/a111@2026-06-12T00:47Z` — **Crosslinking not
-  working.** `[[Topic]]` wiki-links aren't resolving/rendering as clickable links
-  in the answer. Interacts with T26 (the single editable box still needs to
-  surface working crosslinks). Investigate `lib/crosslinks.ts` +
-  `resolveCrosslinks` usage and where it renders.
-
-- `[T26]` `wip:claude-opus-4.8/a111@2026-06-12T00:47Z` — **One box, live-rendered
-  + always editable (Bear/Obsidian-style).** DECISION (user): take as much
-  inspiration as possible from Bear/Obsidian live markdown editors — always
-  editable, live rendered, no read/edit mode toggle. Plan: CodeMirror 6 (what
-  Obsidian uses; plain-text doc model fits our raw-markdown diff attribution +
-  raw-markdown persistence). Single card replaces the "Rendered answer" + "Edit
-  answer" cards; CM6 styles markdown live (headings/bold/italic/links/quote/code)
-  and hosts decorations for attribution (T30), clickable crosslinks (T31), and
-  autosave (T32). Folds in T27 (thought-process) layout. NOTE: signed-in UI isn't
-  headlessly verifiable + prod Mongo down (T25), so feel needs user sanity-check.
-- `[T27]` `wip:claude-opus-4.8/a111@2026-06-12T00:47Z` — **Thought process:
-  collapsed by default + persists after done + no janky reflows.** Don't
-  auto-open/auto-collapse; keep it visible (collapsed) after generation finishes;
-  stabilize layout so the streaming→done transition doesn't jump.
-- `[T30]` `wip:claude-opus-4.8/a111@2026-06-12T00:47Z` — **Show deletions, not
-  just additions.** Attribution/diff view should mark where the user removed AI
-  text, not only where they added text.
 - `[T25]` `wip:claude-opus-4.8/a111@2026-06-12T00:47Z` — **PROD BROKEN: MongoDB
   `bad auth`.** Vercel prod logs show `/api/answers` GET+POST returning 500 with
   `MongoServerError: bad auth : Authentication failed` (Atlas code 8000,
@@ -82,6 +55,21 @@ commits) may be reclaimed. On completion, move the item to "Recently shipped".
 
 ## Recently shipped
 
+- [x] `[T26]/[T27]/[T30]/[T31]/[T32]` Single live-markdown answer box
+      (CodeMirror 6, Bear/Obsidian-inspired) replacing the separate rendered +
+      edit cards. One always-editable, live-rendered surface: markdown styles as
+      you type (headings/bold/italic/links/quote/code) with dimmed syntax
+      markers. **T30** additions are highlighted and deletions show as
+      struck-through ghost marks (CM decorations diffing the live doc vs the AI
+      baseline). **T31** `[[crosslinks]]` that resolve to a submission render as
+      clickable inline links that open that answer (resolver shared with the old
+      rewrite via `matchCrosslinkTarget`). **T27** the answer streams into the
+      same editor (read-only) then unlocks — no card swap/reflow; the thought
+      process is one disclosure, collapsed by default, kept after generation, no
+      auto-toggle. **T32** debounced autosave; status derived
+      (Saving…/Unsaved/Saved), manual Save button removed. Build/lint/typecheck/
+      21 tests green. NOTE: signed-in UI isn't headlessly verifiable + prod Mongo
+      is down (T25) — live feel needs a user sanity-check once prod is back.
 - [x] `[T29]` 90s fonts everywhere: answer prose (`.literary-prose`) dropped the
       Palatino/Iowan book serif for the app's 90s system sans (`var(--font-sans)`,
       line-height 1.55); `--font-sans` reordered so genuine 90s faces (Tahoma, MS
