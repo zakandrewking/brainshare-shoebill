@@ -218,6 +218,20 @@ export function AnswerWorkspace({ user }: { user: User }) {
     });
   }, [currentText, submissions, answer?.id, semanticLinks]);
 
+  // The answer's [[topics]], deduped, for a tappable chip row — the editor's
+  // ⌘/Ctrl-click navigation has no equivalent on touch devices.
+  const linkChips = useMemo(() => {
+    const seen = new Set<string>();
+    const chips: { target: string; targetId?: string }[] = [];
+    for (const range of crosslinkRanges) {
+      const key = normalizeTopic(range.target);
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      chips.push({ target: range.target, targetId: range.targetId });
+    }
+    return chips;
+  }, [crosslinkRanges]);
+
   // Look up topics that didn't resolve lexically, debounced while typing.
   useEffect(() => {
     const pending = [
@@ -895,10 +909,47 @@ export function AnswerWorkspace({ user }: { user: User }) {
                   }}
                   onCreateCrosslink={startQuestionForTopic}
                 />
-                {answerRelated.length > 0 ? (
+                {linkChips.length > 0 ? (
                   <div className="flex flex-wrap items-center gap-1.5 text-xs">
                     <span className="flex items-center gap-1 text-muted-foreground">
                       <LinkIcon className="size-3" />
+                      Links:
+                    </span>
+                    {linkChips.map((chip) =>
+                      chip.targetId ? (
+                        <button
+                          key={chip.target}
+                          type="button"
+                          onClick={() => {
+                            const match = submissions.find(
+                              (submission) => submission.id === chip.targetId,
+                            );
+                            if (match) {
+                              openSubmission(match);
+                            }
+                          }}
+                          className="text-primary underline decoration-dotted underline-offset-2 hover:decoration-solid"
+                        >
+                          {chip.target}
+                        </button>
+                      ) : (
+                        <button
+                          key={chip.target}
+                          type="button"
+                          title="No entry yet — tap to ask about this"
+                          onClick={() => startQuestionForTopic(chip.target)}
+                          className="text-muted-foreground underline decoration-dashed underline-offset-2 hover:text-foreground"
+                        >
+                          {chip.target}&thinsp;+
+                        </button>
+                      ),
+                    )}
+                  </div>
+                ) : null}
+                {answerRelated.length > 0 ? (
+                  <div className="flex flex-wrap items-center gap-1.5 text-xs">
+                    <span className="flex items-center gap-1 text-muted-foreground">
+                      <SearchIcon className="size-3" />
                       Related:
                     </span>
                     {answerRelated.map((related) => (

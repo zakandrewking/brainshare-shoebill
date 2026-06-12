@@ -15,12 +15,7 @@ commits) may be reclaimed. On completion, move the item to "Recently shipped".
 
 ## Now
 
-- `[T48]` `wip:claude-fable-5/q3x8@2026-06-12T04:35Z` — **Crosslinks are
-  unreachable on touch devices.** The editor's [[link]] navigation is
-  ⌘/Ctrl-click only — no equivalent on mobile. Add a "Links" chip row under
-  the editor (next to Related): resolved topics open their entry on tap,
-  unresolved ones start a suggested question (same handlers as the editor),
-  deduped by topic. Desktop meta-click stays.
+_(empty — claim the first actionable item in Next/Ideas)_
 
 ## Next
 
@@ -36,6 +31,11 @@ commits) may be reclaimed. On completion, move the item to "Recently shipped".
 
 ## Recently shipped
 
+- [x] `[T48]` Crosslinks now reachable on touch: a "Links" chip row under the
+      editor lists the answer's deduped `[[topics]]` — resolved ones open
+      their entry on tap, unresolved ones (dashed, "+") start the suggested
+      question; Related row icon switched to the search glyph to
+      differentiate. Desktop ⌘/Ctrl-click unchanged.
 - [x] `[T46]` One loading indicator while generating: the streaming card
       header keeps the sole spinner; Generate/Regenerate/Save buttons lost
       their spinners and ellipses (static "Generating"/"Regenerating"/
