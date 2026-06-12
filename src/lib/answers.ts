@@ -172,6 +172,7 @@ export async function regenerateAnswer(
   aiText: string,
   provider: string,
   model: string,
+  currentText?: string,
 ) {
   if (!ObjectId.isValid(id)) {
     return null;
@@ -187,18 +188,21 @@ export async function regenerateAnswer(
     return null;
   }
 
-  // Overwrite in place: replace the AI baseline, reset the user's edits back to
-  // that baseline, and recompute attribution. Keep the same id, question, and
+  // Overwrite in place: replace the AI baseline and recompute attribution.
+  // `currentText` carries the author's preserved passages woven into the new
+  // baseline (lib/reinject) — the diff re-credits them to the user; without
+  // it, edits reset to the fresh baseline. Keep the same id, question, and
   // createdAt so the submission stays addressable. The stored embedding covers
   // question+answer text, so a new baseline invalidates it (re-embedded lazily).
+  const nextCurrentText = currentText ?? aiText;
   const updatedAt = new Date();
-  const segments = attributeText(aiText, aiText);
+  const segments = attributeText(aiText, nextCurrentText);
   await collection.updateOne(
     { _id: existing._id, userId },
     {
       $set: {
         aiText,
-        currentText: aiText,
+        currentText: nextCurrentText,
         segments,
         provider,
         model,
@@ -212,7 +216,7 @@ export async function regenerateAnswer(
   return serializeAnswer({
     ...existing,
     aiText,
-    currentText: aiText,
+    currentText: nextCurrentText,
     segments,
     provider,
     model,

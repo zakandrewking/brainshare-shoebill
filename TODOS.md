@@ -17,20 +17,7 @@ confirmation" (shipped + verified, pending the user's check, with a one-line
 
 ## Now
 
-- `[T55]` `wip:claude-fable-5/q3x8@2026-06-12T05:38Z` — **Regenerate must
-  preserve the user's text, attributed as theirs.** Design: extract the
-  user-authored segments (≥3 chars, ≤20 passages), send them with the
-  question; the model writes a fresh answer and emits `{{n}}` placeholders
-  where each passage fits (never echoing the words — echoed words would land
-  in the AI baseline and steal attribution). Client weaves the exact passages
-  into `currentText` while `aiText` gets the markers stripped, so the diff
-  marks them as user text again. Cases: model omits a marker → passage
-  appended at the end (never lost); repeated/invented markers → stripped,
-  first use wins; no user edits → plain regenerate; tiny edits (<3 chars,
-  e.g. pluralization) → dropped, unmergeable; passages containing marker
-  syntax → safe (single-pass token walk, no re-scan of substituted text).
-  PUT gains optional `currentText`; markers may flash in the streaming view
-  (cosmetic).
+_(empty — claim the first actionable item in Next/Ideas)_
 
 ## Next
 - `[T50]` `unclaimed` — **Dark-mode + mobile visual review of the CodeMirror
@@ -60,6 +47,20 @@ item to Recently shipped; a problem report moves it back to Now.)_
   lifecycle is now wip → Awaiting confirmation → Recently shipped (on your
   confirmation). CHECK: this section reads right to you.
 
+- `[T55]` Regenerate preserves your text, attributed as yours. Your passages
+  (user segments ≥3 chars, ≤20) go into the prompt; the model is told to
+  build its prose AROUND them as fixed verbatim islands — sentences leading
+  in and picking up the thread — marking each spot with a `{{n}}`
+  placeholder it must not echo. `weaveUserText` then puts your exact words
+  into `currentText` only (baseline gets markers stripped), so the
+  attribution diff re-credits them to you. Cases: unplaced passage →
+  appended at the end, never lost; repeated/invented markers → stripped;
+  no edits → plain regenerate; <3-char edits (pluralizations) → dropped;
+  marker syntax inside your text → safe (single-pass weave). 10 new tests
+  (69 total). CHECK: edit an answer (add a sentence), wait for Saved, hit
+  Regenerate — your sentence should survive, still highlighted as yours,
+  with new AI prose flowing around it. Note: `{{1}}` tokens may flash in
+  the streaming view; cosmetic.
 - `[T43]` (rev 2: now touch-native) `[[topic]]` links work in the editor text
   on mobile: a clean tap follows a resolved link or opens the prefilled
   question for an unresolved one; scrolls, drags, and long-presses still

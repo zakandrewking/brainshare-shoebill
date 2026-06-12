@@ -47,6 +47,7 @@ import {
   normalizeTopic,
   suggestQuestionForTopic,
 } from "@/lib/crosslinks";
+import { extractUserPassages, weaveUserText } from "@/lib/reinject";
 import { findRelatedQuestions } from "@/lib/related";
 import { getFirebaseAuth } from "@/lib/firebase/client";
 import type { SerializedAnswer } from "@/lib/types";
@@ -421,10 +422,18 @@ export function AnswerWorkspace({ user }: { user: User }) {
 
   // Stream a fresh answer for the question, updating the live preview as text
   // arrives. Returns the completed text plus the model that produced it.
-  async function streamGeneration(trimmedQuestion: string) {
+  // `userPassages` (regeneration) makes the model compose around the author's
+  // text via {{n}} placeholders — see lib/reinject.
+  async function streamGeneration(
+    trimmedQuestion: string,
+    userPassages?: string[],
+  ) {
     const response = await authenticatedFetch(user, "/api/generate", {
       method: "POST",
-      body: JSON.stringify({ question: trimmedQuestion }),
+      body: JSON.stringify({
+        question: trimmedQuestion,
+        ...(userPassages && userPassages.length > 0 ? { userPassages } : {}),
+      }),
     });
 
     if (!response.ok || !response.body) {
@@ -537,7 +546,10 @@ export function AnswerWorkspace({ user }: { user: User }) {
   }
 
   // Re-run the model for an existing submission and overwrite it in place:
-  // same id, fresh AI baseline, edits reset back to that baseline.
+  // same id, fresh AI baseline. The user's passages survive: the model is
+  // prompted to compose around them via placeholders, and weaveUserText puts
+  // the exact words back into currentText (never the baseline) so attribution
+  // still credits the author.
   async function regenerate() {
     if (!answer) return;
 
@@ -546,9 +558,16 @@ export function AnswerWorkspace({ user }: { user: User }) {
     setStreamingReasoning("");
 
     try {
+      const userPassages = extractUserPassages(segments);
       const { completeText, provider, model } = await streamGeneration(
         answer.question,
+        userPassages,
       );
+
+      const woven =
+        userPassages.length > 0
+          ? weaveUserText(completeText, userPassages)
+          : { aiText: completeText, currentText: completeText };
 
       const response = await authenticatedFetch(
         user,
@@ -556,7 +575,10 @@ export function AnswerWorkspace({ user }: { user: User }) {
         {
           method: "PUT",
           body: JSON.stringify({
-            aiText: completeText,
+            aiText: woven.aiText,
+            ...(userPassages.length > 0
+              ? { currentText: woven.currentText }
+              : {}),
             provider,
             model,
           }),

@@ -23,6 +23,27 @@ export type AnswerStreamEvent =
   | { t: "text"; v: string }
   | { t: "error"; v: string };
 
+// Regeneration with author passages: the model never sees permission to
+// rewrite them — it builds a new answer AROUND them, marking each passage's
+// place with {{n}}. The exact text is woven back in afterwards (lib/reinject)
+// so attribution still credits the author.
+function buildPrompt(question: string, userPassages?: string[]): string {
+  if (!userPassages || userPassages.length === 0) {
+    return question;
+  }
+
+  const list = userPassages
+    .map((passage, index) => `{{${index + 1}}}: ${passage}`)
+    .join("\n");
+
+  return `${question}
+
+The author of this entry has woven passages of their own into the previous answer. Write a fresh answer to the question above that is built AROUND those passages: each one is a fixed island that will appear verbatim, so compose your prose to lead into it and to continue from it — the sentence before should set it up and the text after should pick up its thread, never leaving it stranded as an aside. At the single point where each passage belongs, output only its placeholder token (for example {{1}}) — never quote, echo, rewrite, or paraphrase the passage text itself; the placeholder is replaced with the author's exact words later. Use every placeholder exactly once, in whatever order serves the argument, and output no placeholder tokens other than those listed.
+
+Author passages:
+${list}`;
+}
+
 export function getGenerationConfig(): GenerationConfig {
   return {
     provider: process.env.AI_PROVIDER ?? "openai",
@@ -42,13 +63,22 @@ function encodeEvent(encoder: TextEncoder, event: AnswerStreamEvent) {
   return encoder.encode(`${JSON.stringify(event)}\n`);
 }
 
-function mockStream(question: string, config: GenerationConfig) {
+function mockStream(
+  question: string,
+  config: GenerationConfig,
+  userPassages?: string[],
+) {
   // Fake "thinking" then the deterministic answer, so the reasoning UI and the
   // streaming/persistence paths can be exercised locally without spending tokens.
   const reasoning = `Reading "${question}" closely, weighing a couple of interpretations, and deciding how to frame a clear, honest answer.`;
+  // Placeholders for any author passages, so the reinjection path is
+  // exercisable locally end to end.
+  const markers = (userPassages ?? [])
+    .map((_, index) => `{{${index + 1}}}`)
+    .join(" ");
   // Carries inline citations + a References list to mirror the production
   // system prompt's academia style.
-  const text = `This is a local development answer to "${question}" (Mock Author 2026). It is generated deterministically by the mock provider so authentication, persistence, editing, streaming, and authorship attribution can be tested without spending AI tokens (Another Mock 2025); configure AI_PROVIDER and AI_MODEL to use a production model.\n\nReferences:\n- Mock Author, *A Deterministic Treatise on Local Development* (2026)\n- Another Mock, *Streaming Without Spending* (2025)`;
+  const text = `This is a local development answer to "${question}" (Mock Author 2026).${markers ? ` ${markers}` : ""} It is generated deterministically by the mock provider so authentication, persistence, editing, streaming, and authorship attribution can be tested without spending AI tokens (Another Mock 2025); configure AI_PROVIDER and AI_MODEL to use a production model.\n\nReferences:\n- Mock Author, *A Deterministic Treatise on Local Development* (2026)\n- Another Mock, *Streaming Without Spending* (2025)`;
   const encoder = new TextEncoder();
   const sleep = () => new Promise((resolve) => setTimeout(resolve, 25));
 
@@ -70,11 +100,11 @@ function mockStream(question: string, config: GenerationConfig) {
   );
 }
 
-export function streamAnswer(question: string) {
+export function streamAnswer(question: string, userPassages?: string[]) {
   const config = getGenerationConfig();
 
   if (config.provider === "mock") {
-    return mockStream(question, config);
+    return mockStream(question, config, userPassages);
   }
 
   const languageModel =
@@ -91,7 +121,7 @@ export function streamAnswer(question: string) {
   const result = streamText({
     model: languageModel,
     system: systemPrompt,
-    prompt: question,
+    prompt: buildPrompt(question, userPassages),
     // Surface the real provider error. Without this, the SDK's default handler
     // only console.errors a bare object and the stream is aborted, so the
     // browser sees "answer streamed, then failed" with no diagnosable cause.

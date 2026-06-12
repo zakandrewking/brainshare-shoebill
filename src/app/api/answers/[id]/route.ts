@@ -16,6 +16,10 @@ const requestSchema = z.object({
 
 const regenerateSchema = z.object({
   aiText: z.string().trim().min(1).max(20000),
+  // When regeneration preserved the author's passages (lib/reinject), the
+  // woven text arrives separately so the diff still attributes them to the
+  // user; absent, edits reset to the fresh baseline.
+  currentText: z.string().trim().min(1).max(40000).optional(),
   provider: z.string().trim().min(1).max(100),
   model: z.string().trim().min(1).max(100),
 });
@@ -56,7 +60,7 @@ export async function PUT(
 ) {
   try {
     const user = await requireAuthorizedUser(request);
-    const { aiText, provider, model } = regenerateSchema.parse(
+    const { aiText, currentText, provider, model } = regenerateSchema.parse(
       await request.json(),
     );
     const { id } = await params;
@@ -66,6 +70,7 @@ export async function PUT(
       aiText,
       provider,
       model,
+      currentText,
     );
 
     if (!answer) {
