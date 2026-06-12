@@ -9,9 +9,10 @@
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   /* Classic system UI stack (Win95/98 / early Mac flavor). No web font so the
-     build has no network dependency; the 8-bit mascot supplies the pixel feel. */
-  --font-sans: "Tahoma", "Geneva", "Segoe UI", "MS Sans Serif", system-ui, sans-serif;
-  --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+     build has no network dependency; the 8-bit mascot supplies the pixel feel.
+     Genuine 90s faces lead so period machines pick them; modern fallbacks last. */
+  --font-sans: "Tahoma", "MS Sans Serif", "Geneva", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "Monaco", "Courier New", "Consolas", "Liberation Mono", monospace;
   --font-heading: var(--font-sans);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
@@ -218,19 +219,15 @@
 }
 
 /* ───────────────────────────────────────────────────────────────────────────
-   Literary prose: generated answers read like a printed book — an old-style
-   serif, generous measure and leading — while still rendering full markdown.
-   Applied to the rendered + streaming answer wells. Code stays monospaced.
-   Uses only system serif faces so the build keeps no font network dependency.
-   ──────────────────────────────────────────────────────────────────────── */
+   Answer prose: generated answers render in the same 90s system UI face as the
+   rest of the app (no book serif), so the period look is consistent everywhere
+   while still rendering full markdown. Applied to the rendered + streaming
+   answer wells; code/pre stay monospaced. No web-font network dependency. */
 .literary-prose {
-  font-family: "Iowan Old Style", "Palatino Linotype", "Palatino", "Book Antiqua",
-    "Georgia", "Times New Roman", serif;
-  font-size: 1.0625rem;
-  line-height: 1.72;
-  letter-spacing: 0.005em;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
+  font-family: var(--font-sans);
+  font-size: 1rem;
+  line-height: 1.55;
+  letter-spacing: normal;
 }
 .literary-prose h1,
 .literary-prose h2,

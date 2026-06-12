@@ -543,10 +543,8 @@ export function AnswerWorkspace({ user }: { user: User }) {
                     setQuestionFocused(false);
                     return;
                   }
-                  if (
-                    (event.metaKey || event.ctrlKey) &&
-                    event.key === "Enter"
-                  ) {
+                  // Enter submits; Shift+Enter inserts a newline.
+                  if (event.key === "Enter" && !event.shiftKey) {
                     event.preventDefault();
                     void generate();
                   }

@@ -11,9 +11,18 @@ never just the model name. Claim an item by setting the status to your handle
 and committing+pushing *before* you start work. If your push is rejected,
 someone claimed first — pull and pick another. Stale claims (>30 min, no new
 commits) may be reclaimed. On completion, move the item to "Recently shipped".
-**Next free id: T32.**
+**Next free id: T34.**
 
 ## Now
+
+- `[T33]` `unclaimed` — **Auto-reload on new deploy.** When Vercel finishes
+  building a new version, reload the page cleverly (detect the new build/version
+  — e.g. poll a build-id endpoint or compare a deployment id — and prompt or
+  soft-reload so users aren't stuck on stale assets/chunks).
+
+- `[T32]` `wip:claude-opus-4.8/a111@2026-06-12T00:47Z` — **Autosave as I type.**
+  Replace the manual "Save changes" button with debounced autosave on edit
+  (show saving/saved status; keep it robust to in-flight requests).
 
 - `[T31]` `wip:claude-opus-4.8/a111@2026-06-12T00:47Z` — **Crosslinking not
   working.** `[[Topic]]` wiki-links aren't resolving/rendering as clickable links
@@ -29,11 +38,6 @@ commits) may be reclaimed. On completion, move the item to "Recently shipped".
   collapsed by default + persists after done + no janky reflows.** Don't
   auto-open/auto-collapse; keep it visible (collapsed) after generation finishes;
   stabilize layout so the streaming→done transition doesn't jump.
-- `[T28]` `wip:claude-opus-4.8/a111@2026-06-12T00:47Z` — **Submit on Enter**, not
-  Cmd/Ctrl+Enter (Shift+Enter or similar for newline).
-- `[T29]` `wip:claude-opus-4.8/a111@2026-06-12T00:47Z` — **90s-era fonts
-  everywhere.** Apply a period-appropriate (Win95/classic-Mac) font stack
-  globally, consistent with the retro theme.
 - `[T30]` `wip:claude-opus-4.8/a111@2026-06-12T00:47Z` — **Show deletions, not
   just additions.** Attribution/diff view should mark where the user removed AI
   text, not only where they added text.
@@ -72,6 +76,12 @@ commits) may be reclaimed. On completion, move the item to "Recently shipped".
 
 ## Recently shipped
 
+- [x] `[T29]` 90s fonts everywhere: answer prose (`.literary-prose`) dropped the
+      Palatino/Iowan book serif for the app's 90s system sans (`var(--font-sans)`,
+      line-height 1.55); `--font-sans` reordered so genuine 90s faces (Tahoma, MS
+      Sans Serif, Geneva) lead; `--font-mono` now leads with Monaco/Courier New.
+      Code/pre stay monospaced. Build/lint/typecheck green.
+- [x] `[T28]` Submit on Enter (Shift+Enter = newline) instead of Cmd/Ctrl+Enter.
 - [x] `[T24]` Deduped the streaming card's two "thinking" indicators down to one.
       The header `CardTitle` is now the sole status label ("Thinking…" →
       "Writing"/"Regenerating"); the body's reasoning box is relabeled "Thought
