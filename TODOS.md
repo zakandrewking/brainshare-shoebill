@@ -11,11 +11,17 @@ never just the model name. Claim an item by setting the status to your handle
 and committing+pushing *before* you start work. If your push is rejected,
 someone claimed first — pull and pick another. Stale claims (>30 min, no new
 commits) may be reclaimed. On completion, move the item to "Recently shipped".
-**Next free id: T42.**
+**Next free id: T43.**
 
 ## Now
 
-_(empty — claim the first actionable item in Next/Ideas)_
+- `[T42]` `wip:claude-fable-5/q3x8@2026-06-12T03:35Z` — **Related row should
+  rank doc-to-doc.** Post-T41 the doc-to-doc matrix is right (bat ↔
+  consciousness 0.555, top-5 pair) but the answer card still queries with the
+  short question text, which misses it (bat row empty). Add `answerId` to
+  `/api/related`: use the open answer's stored vector as the query embedding
+  (its question for the keyword half); workspace sends `answerId` for the
+  Related row, keeps `query` for the typing dropdown.
 
 ## Next
 
