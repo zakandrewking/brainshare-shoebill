@@ -11,7 +11,7 @@ never just the model name. Claim an item by setting the status to your handle
 and committing+pushing *before* you start work. If your push is rejected,
 someone claimed first — pull and pick another. Stale claims (>30 min, no new
 commits) may be reclaimed. On completion, move the item to "Recently shipped".
-**Next free id: T27.**
+**Next free id: T28.**
 
 ## Now
 
@@ -37,6 +37,13 @@ commits) may be reclaimed. On completion, move the item to "Recently shipped".
 
 ## Recently shipped
 
+- [x] `[T27]` `SERVICE_API_TOKEN` "looked empty": the CLI had created it as
+      type **sensitive** (write-only — runtime sees it, but `vercel env pull`
+      and the dashboard return `""` by design). Deleted and recreated it as
+      type **encrypted** with the identical value via the REST API. Verified:
+      `vercel env pull --environment=production` now returns the 64-char token
+      and prod still answers 200 with it. When adding secrets via
+      `vercel env add`, pass `--sensitive` only when read-back is never needed.
 - [x] `[T25]` **Service-token API access to prod data — live and verified.**
       `requireAuthorizedUser` accepts `Authorization: Bearer <SERVICE_API_TOKEN>`
       (timing-safe, ≥32 chars) acting as the primary allowlisted user; new
