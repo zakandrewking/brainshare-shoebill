@@ -132,6 +132,34 @@ server in addition to any client-side messaging.
 - `pnpm build`: production build
 - `pnpm verify`: full verification
 
+## Production Logs & Observability (Vercel)
+
+Use this to diagnose what's actually happening on `brainshare.io` in production.
+
+- The **Vercel CLI** is preinstalled (`vercel --version`). Auth is via the
+  **`VERCEL_ACCESS_TOKEN`** env var already present in the environment — pass it
+  as `--token "$VERCEL_ACCESS_TOKEN"` on every command (do NOT run `vercel login`).
+- Account `zakandrewking`; project **`brainshare-shoebill`** (prod URL
+  `https://www.brainshare.io`, scope `zakandrewkings-projects`).
+- Run `vercel link --yes --project brainshare-shoebill --token "$VERCEL_ACCESS_TOKEN"`
+  once per fresh container so commands resolve the project. `.vercel/` is
+  already gitignored — never commit it.
+- **Pull recent prod errors** (this is the go-to for "is prod broken?"):
+
+  ```
+  vercel logs --token "$VERCEL_ACCESS_TOKEN" -p brainshare-shoebill \
+    --no-branch --environment production --level error --since 24h --limit 100 -x
+  ```
+
+  `--no-branch` is required when working on a feature branch (otherwise it
+  filters to the current git branch, which has no prod deploys). `-x` expands
+  the full message/stack; `--query "status:500 error"`, `--status-code 500`,
+  `--request-id`, and `--follow` (live stream) also work. Sources: λ serverless,
+  ε edge, ◇ static.
+- **Inspect env var names** (values stay encrypted): `vercel env ls production
+  --token "$VERCEL_ACCESS_TOKEN"`. Never `vercel env pull` a secret into the repo
+  or print its value.
+
 ## Implementation Rules
 
 - Use Server Components by default. Add `"use client"` only where browser

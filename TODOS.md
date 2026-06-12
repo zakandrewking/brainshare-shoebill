@@ -11,13 +11,23 @@ never just the model name. Claim an item by setting the status to your handle
 and committing+pushing *before* you start work. If your push is rejected,
 someone claimed first — pull and pick another. Stale claims (>30 min, no new
 commits) may be reclaimed. On completion, move the item to "Recently shipped".
-**Next free id: T24.**
+**Next free id: T26.**
 
 ## Now
 
-- `[T23]` `wip:claude-opus-4.8/a111@2026-06-12T00:47Z` — **Check Vercel prod logs
-  for errors + document the procedure in AGENTS.md** so future sessions know how
-  to pull Vercel logs (CLI, token env var, project link).
+- `[T25]` `wip:claude-opus-4.8/a111@2026-06-12T00:47Z` — **PROD BROKEN: MongoDB
+  `bad auth`.** Vercel prod logs show `/api/answers` GET+POST returning 500 with
+  `MongoServerError: bad auth : Authentication failed` (Atlas code 8000,
+  HandshakeError) — recurring through 2026-06-12T00:48Z. The `MONGODB_URI`
+  credentials in Vercel Production are being rejected by Atlas. Almost certainly
+  a wrong/rotated DB-user password or an Atlas user that no longer exists. Likely
+  user action (correct secret): verify the Atlas DB user + password, re-set
+  `MONGODB_URI` in Vercel Production, redeploy. This is what "still broken on
+  prod" refers to (data layer; separate from the T14 GitHub-login issue).
+- `[T24]` `unclaimed` — **Two "thinking" indicators showing; want only one**
+  (ideally render the thinking process nicely). Streaming card likely shows both
+  the "Thinking…" header/placeholder AND the collapsible reasoning box at once
+  (T22). Dedupe to a single, polished thinking affordance.
 - `[T14]` `wip:claude-opus-4.8/ae44@2026-06-11T15:28Z` (taken over from 9yf1, user-directed) — **Prod GitHub login is
   still broken.** CODE DONE (pushed): auth-gate now (a) surfaces the real
   Firebase error code instead of a generic message, (b) falls back from
@@ -40,6 +50,11 @@ commits) may be reclaimed. On completion, move the item to "Recently shipped".
 
 ## Recently shipped
 
+- [x] `[T23]` Documented how to pull Vercel production logs in AGENTS.md
+      ("Production Logs & Observability"): CLI is preinstalled, auth via
+      `VERCEL_ACCESS_TOKEN`, `vercel link` once per container, and the go-to
+      error query (`vercel logs --no-branch --environment production --level
+      error --since 24h -x`). Used it to surface T25 (prod MongoDB bad-auth 500s).
 - [x] `[T22]` Surface the model's reasoning / "thinking". `/api/generate` now
       streams a small NDJSON protocol (`{t:"reasoning"|"text"|"error",v}`) over
       the SDK `fullStream` instead of text-only, and requests OpenAI reasoning
