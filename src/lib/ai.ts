@@ -13,6 +13,16 @@ export type GenerationConfig = {
   provider: string;
 };
 
+// Newline-delimited JSON streamed to the browser. Each line is one event so the
+// client can show the model's reasoning ("thinking") separately from the answer
+// text as both stream in. Reasoning is ephemeral and never persisted.
+export const ANSWER_STREAM_CONTENT_TYPE = "application/x-ndjson; charset=utf-8";
+
+export type AnswerStreamEvent =
+  | { t: "reasoning"; v: string }
+  | { t: "text"; v: string }
+  | { t: "error"; v: string };
+
 export function getGenerationConfig(): GenerationConfig {
   return {
     provider: process.env.AI_PROVIDER ?? "openai",
@@ -20,28 +30,41 @@ export function getGenerationConfig(): GenerationConfig {
   };
 }
 
+function streamHeaders(config: GenerationConfig) {
+  return {
+    "content-type": ANSWER_STREAM_CONTENT_TYPE,
+    "x-ai-model": config.model,
+    "x-ai-provider": config.provider,
+  };
+}
+
+function encodeEvent(encoder: TextEncoder, event: AnswerStreamEvent) {
+  return encoder.encode(`${JSON.stringify(event)}\n`);
+}
+
 function mockStream(question: string, config: GenerationConfig) {
+  // Fake "thinking" then the deterministic answer, so the reasoning UI and the
+  // streaming/persistence paths can be exercised locally without spending tokens.
+  const reasoning = `Reading "${question}" closely, weighing a couple of interpretations, and deciding how to frame a clear, honest answer.`;
   const text = `This is a local development answer to "${question}". It is generated deterministically by the mock provider so authentication, persistence, editing, streaming, and authorship attribution can be tested without spending AI tokens; configure AI_PROVIDER and AI_MODEL to use a production model.`;
-  const chunks = text.match(/.{1,12}(?:\s|$)/g) ?? [text];
   const encoder = new TextEncoder();
+  const sleep = () => new Promise((resolve) => setTimeout(resolve, 25));
 
   return new Response(
     new ReadableStream({
       async start(controller) {
-        for (const chunk of chunks) {
-          controller.enqueue(encoder.encode(chunk));
-          await new Promise((resolve) => setTimeout(resolve, 25));
+        for (const chunk of reasoning.match(/.{1,18}(?:\s|$)/g) ?? [reasoning]) {
+          controller.enqueue(encodeEvent(encoder, { t: "reasoning", v: chunk }));
+          await sleep();
+        }
+        for (const chunk of text.match(/.{1,12}(?:\s|$)/g) ?? [text]) {
+          controller.enqueue(encodeEvent(encoder, { t: "text", v: chunk }));
+          await sleep();
         }
         controller.close();
       },
     }),
-    {
-      headers: {
-        "content-type": "text/plain; charset=utf-8",
-        "x-ai-model": config.model,
-        "x-ai-provider": config.provider,
-      },
-    },
+    { headers: streamHeaders(config) },
   );
 }
 
@@ -68,7 +91,7 @@ export function streamAnswer(question: string) {
     system: systemPrompt,
     prompt: question,
     // Surface the real provider error. Without this, the SDK's default handler
-    // only console.errors a bare object and the stream body is aborted, so the
+    // only console.errors a bare object and the stream is aborted, so the
     // browser sees "answer streamed, then failed" with no diagnosable cause.
     onError: ({ error }) => {
       console.error("[streamAnswer] generation stream error:", error);
@@ -79,6 +102,10 @@ export function streamAnswer(question: string) {
             openai: {
               reasoningEffort:
                 process.env.OPENAI_REASONING_EFFORT ?? "high",
+              // Ask the Responses API for a reasoning summary so we can show the
+              // user what the model is thinking about (raw reasoning tokens are
+              // not exposed by OpenAI — only these summaries).
+              reasoningSummary: "auto",
               textVerbosity: "medium",
               store: false,
             } satisfies OpenAILanguageModelResponsesOptions,
@@ -86,10 +113,40 @@ export function streamAnswer(question: string) {
         : undefined,
   });
 
-  return result.toTextStreamResponse({
-    headers: {
-      "x-ai-model": config.model,
-      "x-ai-provider": config.provider,
+  // Re-frame the SDK's full event stream as our reasoning/text NDJSON protocol.
+  // Iterating fullStream ourselves (instead of toTextStreamResponse) lets us
+  // forward reasoning deltas and keep the answer streaming even if the model
+  // emits a late error.
+  const encoder = new TextEncoder();
+  const stream = new ReadableStream({
+    async start(controller) {
+      try {
+        for await (const part of result.fullStream) {
+          if (part.type === "reasoning-delta" && part.text) {
+            controller.enqueue(
+              encodeEvent(encoder, { t: "reasoning", v: part.text }),
+            );
+          } else if (part.type === "text-delta" && part.text) {
+            controller.enqueue(encodeEvent(encoder, { t: "text", v: part.text }));
+          } else if (part.type === "error") {
+            controller.enqueue(
+              encodeEvent(encoder, { t: "error", v: String(part.error) }),
+            );
+          }
+        }
+      } catch (error) {
+        console.error("[streamAnswer] stream iteration error:", error);
+        controller.enqueue(
+          encodeEvent(encoder, {
+            t: "error",
+            v: "The answer stream ended unexpectedly.",
+          }),
+        );
+      } finally {
+        controller.close();
+      }
     },
   });
+
+  return new Response(stream, { headers: streamHeaders(config) });
 }

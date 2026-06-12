@@ -11,7 +11,7 @@ never just the model name. Claim an item by setting the status to your handle
 and committing+pushing *before* you start work. If your push is rejected,
 someone claimed first — pull and pick another. Stale claims (>30 min, no new
 commits) may be reclaimed. On completion, move the item to "Recently shipped".
-**Next free id: T22.**
+**Next free id: T23.**
 
 ## Now
 
@@ -37,6 +37,18 @@ commits) may be reclaimed. On completion, move the item to "Recently shipped".
 
 ## Recently shipped
 
+- [x] `[T22]` Surface the model's reasoning / "thinking". `/api/generate` now
+      streams a small NDJSON protocol (`{t:"reasoning"|"text"|"error",v}`) over
+      the SDK `fullStream` instead of text-only, and requests OpenAI reasoning
+      summaries (`reasoningSummary:"auto"`). The streaming card shows a live,
+      collapsible "Thinking" box as the reasoning summary streams, a "Thinking…"
+      header/placeholder before any output (the long high-effort gap), then flips
+      to "Writing" once text arrives. Reasoning is ephemeral (not persisted).
+      Mock provider emits fake reasoning+text so it's exercisable locally; new
+      `ai.test.ts` asserts reasoning-precedes-text NDJSON. Build/lint/21 tests
+      green. NOTE: OpenAI only returns summaries (not raw reasoning) and some
+      orgs need verification for them — if absent, the "Thinking…" indicator
+      still conveys when it's reasoning.
 - [x] `[T21]` Fix "answer streams fully, then shows an error." Root mechanism:
       `toTextStreamResponse()` aborts the HTTP body when the model stream emits a
       late error part *after* delivering all text deltas, so the client's final

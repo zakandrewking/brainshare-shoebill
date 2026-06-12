@@ -74,6 +74,9 @@ export function AnswerWorkspace({ user }: { user: User }) {
   const [answer, setAnswer] = useState<SerializedAnswer | null>(null);
   const [currentText, setCurrentText] = useState("");
   const [streamingText, setStreamingText] = useState("");
+  // The model's live reasoning summary ("thinking"). Ephemeral — shown only
+  // while generating and never persisted.
+  const [streamingReasoning, setStreamingReasoning] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -223,20 +226,45 @@ export function AnswerWorkspace({ user }: { user: User }) {
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
     let completeText = "";
+    let reasoningText = "";
 
+    // The body is newline-delimited JSON; each line is a reasoning/text/error
+    // event (see ANSWER_STREAM_CONTENT_TYPE in lib/ai.ts).
+    const handleLine = (line: string) => {
+      const trimmed = line.trim();
+      if (!trimmed) return;
+      let event: { t?: string; v?: string };
+      try {
+        event = JSON.parse(trimmed);
+      } catch {
+        return;
+      }
+      if (event.t === "text" && event.v) {
+        completeText += event.v;
+        setStreamingText(completeText);
+      } else if (event.t === "reasoning" && event.v) {
+        reasoningText += event.v;
+        setStreamingReasoning(reasoningText);
+      } else if (event.t === "error") {
+        console.error("Answer stream reported an error:", event.v);
+      }
+    };
+
+    let buffer = "";
     try {
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
-        completeText += decoder.decode(value, { stream: true });
-        setStreamingText(completeText);
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        // Keep the last (possibly partial) line in the buffer.
+        buffer = lines.pop() ?? "";
+        for (const line of lines) handleLine(line);
       }
     } catch (streamError) {
-      // The model stream can abort at finalization even after the full answer
-      // has been delivered: the AI SDK surfaces a late error by erroring the
-      // response body, which rejects this read. Don't throw away the answer the
-      // user just watched stream in — keep it and let the save proceed. Only
-      // treat it as a real failure if no text arrived at all.
+      // The stream can abort at finalization even after the full answer has been
+      // delivered. Don't throw away the answer the user just watched stream in —
+      // keep it and let the save proceed. Only fail if no text arrived at all.
       console.error("Answer stream ended with an error:", streamError);
       if (completeText.trim().length === 0) {
         throw new Error(
@@ -245,7 +273,8 @@ export function AnswerWorkspace({ user }: { user: User }) {
       }
     }
 
-    completeText += decoder.decode();
+    buffer += decoder.decode();
+    handleLine(buffer);
     return { completeText, provider, model };
   }
 
@@ -260,6 +289,7 @@ export function AnswerWorkspace({ user }: { user: User }) {
     setAnswer(null);
     setCurrentText("");
     setStreamingText("");
+    setStreamingReasoning("");
 
     try {
       const { completeText, provider, model } =
@@ -305,6 +335,7 @@ export function AnswerWorkspace({ user }: { user: User }) {
 
     setIsRegenerating(true);
     setStreamingText("");
+    setStreamingReasoning("");
 
     try {
       const { completeText, provider, model } = await streamGeneration(
@@ -573,19 +604,43 @@ export function AnswerWorkspace({ user }: { user: User }) {
               <div className="flex items-center gap-2">
                 <LoaderCircleIcon className="size-4 animate-spin" />
                 <CardTitle>
-                  {isRegenerating ? "Regenerating" : "Writing"}
+                  {streamingText
+                    ? isRegenerating
+                      ? "Regenerating"
+                      : "Writing"
+                    : "Thinking…"}
                 </CardTitle>
               </div>
             </CardHeader>
-            <CardContent>
-              <div className="retro-sunken literary-prose min-h-40 p-5">
-                <Streamdown
-                  isAnimating
-                  animated={{ animation: "fadeIn", sep: "word", duration: 450 }}
-                >
-                  {streamingText}
-                </Streamdown>
-              </div>
+            <CardContent className="space-y-3">
+              {streamingReasoning ? (
+                <details open className="retro-sunken p-3 text-sm">
+                  <summary className="cursor-pointer font-medium text-muted-foreground">
+                    Thinking
+                  </summary>
+                  <div className="mt-2 whitespace-pre-wrap text-muted-foreground">
+                    {streamingReasoning}
+                  </div>
+                </details>
+              ) : null}
+              {streamingText ? (
+                <div className="retro-sunken literary-prose min-h-40 p-5">
+                  <Streamdown
+                    isAnimating
+                    animated={{
+                      animation: "fadeIn",
+                      sep: "word",
+                      duration: 450,
+                    }}
+                  >
+                    {streamingText}
+                  </Streamdown>
+                </div>
+              ) : (
+                <div className="retro-sunken flex min-h-40 items-center justify-center p-5 text-sm text-muted-foreground">
+                  {streamingReasoning ? "Forming an answer…" : "Thinking…"}
+                </div>
+              )}
             </CardContent>
           </Card>
         ) : null}
