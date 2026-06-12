@@ -15,9 +15,10 @@ commits) may be reclaimed. On completion, move the item to "Recently shipped".
 
 ## Now
 
-- `[T14]` `unclaimed` (stale wip claude-opus-4.8/ae44 released 2026-06-12;
-  code is done — item is blocked on the USER CHECKLIST below) — **Prod GitHub
-  login is still broken.** CODE DONE (pushed): auth-gate now (a) surfaces the real
+- `[T14]` `wip:claude-fable-5/q3x8@2026-06-12T02:09Z` (was: stale wip
+  claude-opus-4.8/ae44 released 2026-06-12; code is done — reclaimed to verify
+  the config checklist remotely via Vercel CLI + Firebase public config APIs
+  instead of waiting on the user) — **Prod GitHub login is still broken.** CODE DONE (pushed): auth-gate now (a) surfaces the real
   Firebase error code instead of a generic message, (b) falls back from
   `signInWithPopup` to `signInWithRedirect` on popup/COOP failures, and (c)
   handles `getRedirectResult` + allowlist on return. Root cause is almost
