@@ -15,14 +15,13 @@ commits) may be reclaimed. On completion, move the item to "Recently shipped".
 
 ## Now
 
-_(empty — claim the first actionable item in Next/Ideas)_
+- `[T49]` `wip:claude-fable-5/q3x8@2026-06-12T04:45Z` — **Backlinks row
+  ("Mentioned in").** Show entries whose text `[[links]]` to the open one
+  (reverse crosslinks). All submissions are already client-side, so a pure
+  lexical pass over their texts suffices (semantic backlinks later if
+  wanted).
 
 ## Next
-
-- `[T49]` `unclaimed` — **Backlinks row ("Mentioned in").** Show entries
-  whose text `[[links]]` to the open one (reverse crosslinks). All
-  submissions are already client-side, so a pure lexical pass over their
-  texts suffices (semantic backlinks later if wanted).
 - `[T50]` `unclaimed` — **Dark-mode + mobile visual review of the CodeMirror
   surface.** The CM theme hardcodes sky tints/primary vars built blind;
   needs a signed-in visual pass (user, or agent-browser if sign-in becomes
