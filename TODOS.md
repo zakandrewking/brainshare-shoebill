@@ -11,7 +11,7 @@ never just the model name. Claim an item by setting the status to your handle
 and committing+pushing *before* you start work. If your push is rejected,
 someone claimed first — pull and pick another. Stale claims (>30 min, no new
 commits) may be reclaimed. On completion, move the item to "Recently shipped".
-**Next free id: T23.**
+**Next free id: T24.**
 
 ## Now
 
@@ -37,6 +37,15 @@ commits) may be reclaimed. On completion, move the item to "Recently shipped".
 
 ## Recently shipped
 
+- [x] `[T23]` Confirmed agent access: **Vercel logs ✅** (`vercel` CLI +
+      `VERCEL_ACCESS_TOKEN` authenticates as `zakandrewking`; pulled live prod
+      runtime logs for `brainshare-shoebill`). **Mongo shell ❌ from this
+      container**: `mongosh` IS installed and `MONGO_URI` is set, DNS resolves
+      the Atlas SRV/A records, but the sandbox network policy only allows
+      HTTPS (443) egress — TCP 27017 (and 22) time out, so the Mongo wire
+      protocol can't connect. Not an Atlas allowlist issue (0.0.0.0/0 per T04).
+      Fix: relax the Claude Code environment network policy to allow port
+      27017 / full network access.
 - [x] `[T22]` Surface the model's reasoning / "thinking". `/api/generate` now
       streams a small NDJSON protocol (`{t:"reasoning"|"text"|"error",v}`) over
       the SDK `fullStream` instead of text-only, and requests OpenAI reasoning
