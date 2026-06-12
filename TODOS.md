@@ -11,17 +11,11 @@ never just the model name. Claim an item by setting the status to your handle
 and committing+pushing *before* you start work. If your push is rejected,
 someone claimed first — pull and pick another. Stale claims (>30 min, no new
 commits) may be reclaimed. On completion, move the item to "Recently shipped".
-**Next free id: T44.**
+**Next free id: T45.**
 
 ## Now
 
-- `[T43]` `wip:claude-fable-5/q3x8@2026-06-12T04:12Z` — **Unresolved
-  `[[topics]]` should start a new entry.** ⌘/Ctrl-click on a `[[topic]]` with
-  no matching entry opens the new-question input prefilled with a suggested
-  question for that topic ("What is X?") and focuses it — so the related-
-  suggestions dropdown immediately shows near-matches before generating.
-  Style unresolved links as actionable (dashed underline + title hint)
-  instead of just muted.
+_(empty — claim the first actionable item in Next/Ideas)_
 
 ## Next
 
@@ -29,6 +23,16 @@ _(empty — promote from Ideas when ready)_
 
 ## Recently shipped
 
+- [x] `[T43]` Unresolved `[[topics]]` now seed new entries: ⌘/Ctrl-click on a
+      topic with no entry opens a fresh workspace with the ask box prefilled
+      via `suggestQuestionForTopic` ("What is X?"; topics already phrased as
+      questions pass through) and focused, so the suggestions dropdown shows
+      near-matches before generating. Unresolved links styled actionable
+      (dashed underline, pointer, title hint). 3 new tests.
+- [x] `[T44]` Suggestion clicks no longer clobber the typed question:
+      `selectSubmission`/`openSubmission` accept `keepQuestion`, used by the
+      dropdown so the entry opens below while the input keeps the exact
+      draft text.
 - [x] `[T42]` Related row ranks doc-to-doc: `/api/related` accepts `answerId`
       and uses that answer's stored question+text vector as the query (its
       question for the keyword half); the workspace sends `answerId` for the

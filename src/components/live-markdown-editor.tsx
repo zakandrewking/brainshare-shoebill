@@ -44,6 +44,7 @@ const resolvedLinkMark = Decoration.mark({
 });
 const unresolvedLinkMark = Decoration.mark({
   class: "cm-crosslink-unresolved",
+  attributes: { title: "No entry yet — ⌘/Ctrl-click to ask about this" },
 });
 
 // Overlapping marks are fine (Decoration.set sorts); ranges are clamped to the
@@ -122,7 +123,13 @@ const editorTheme = EditorView.theme({
     textUnderlineOffset: "2px",
     cursor: "pointer",
   },
-  ".cm-crosslink-unresolved": { color: "var(--muted-foreground)" },
+  ".cm-crosslink-unresolved": {
+    color: "var(--muted-foreground)",
+    textDecorationLine: "underline",
+    textDecorationStyle: "dashed",
+    textUnderlineOffset: "2px",
+    cursor: "pointer",
+  },
 });
 
 export function LiveMarkdownEditor({
@@ -131,6 +138,7 @@ export function LiveMarkdownEditor({
   crosslinks,
   onChange,
   onOpenCrosslink,
+  onCreateCrosslink,
   className,
 }: {
   value: string;
@@ -139,14 +147,21 @@ export function LiveMarkdownEditor({
   onChange: (value: string) => void;
   /** ⌘/Ctrl-click on a resolved [[crosslink]] opens that submission. */
   onOpenCrosslink?: (id: string) => void;
+  /** ⌘/Ctrl-click on an unresolved [[topic]] starts a new entry for it. */
+  onCreateCrosslink?: (topic: string) => void;
   className?: string;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
   // Latest props for CodeMirror callbacks without recreating the editor.
-  const liveRef = useRef({ onChange, onOpenCrosslink, crosslinks });
+  const liveRef = useRef({
+    onChange,
+    onOpenCrosslink,
+    onCreateCrosslink,
+    crosslinks,
+  });
   useEffect(() => {
-    liveRef.current = { onChange, onOpenCrosslink, crosslinks };
+    liveRef.current = { onChange, onOpenCrosslink, onCreateCrosslink, crosslinks };
   });
 
   useEffect(() => {
@@ -180,11 +195,17 @@ export function LiveMarkdownEditor({
                 return false;
               }
               const link = liveRef.current.crosslinks.find(
-                (range) =>
-                  range.targetId && pos >= range.start && pos < range.end,
+                (range) => pos >= range.start && pos < range.end,
               );
-              if (link?.targetId && liveRef.current.onOpenCrosslink) {
+              if (!link) {
+                return false;
+              }
+              if (link.targetId && liveRef.current.onOpenCrosslink) {
                 liveRef.current.onOpenCrosslink(link.targetId);
+                return true;
+              }
+              if (!link.targetId && liveRef.current.onCreateCrosslink) {
+                liveRef.current.onCreateCrosslink(link.target);
                 return true;
               }
               return false;

@@ -40,7 +40,11 @@ import {
 } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
 import { attributeText, attributionCounts } from "@/lib/attribution";
-import { findCrosslinkRanges, normalizeTopic } from "@/lib/crosslinks";
+import {
+  findCrosslinkRanges,
+  normalizeTopic,
+  suggestQuestionForTopic,
+} from "@/lib/crosslinks";
 import { findRelatedQuestions } from "@/lib/related";
 import { getFirebaseAuth } from "@/lib/firebase/client";
 import type { SerializedAnswer } from "@/lib/types";
@@ -281,17 +285,27 @@ export function AnswerWorkspace({ user }: { user: User }) {
 
   // Load only the submission state (no URL navigation). Used when reconciling
   // the open answer with the `?a=<id>` param on mount and on back/forward.
-  const selectSubmission = useCallback((submission: SerializedAnswer | null) => {
-    setAnswer(submission);
-    setCurrentText(submission?.currentText ?? "");
-    setQuestion(submission?.question ?? "");
-    setStreamingText("");
-    // Reasoning belongs to a generation event; it survives completion (shown
-    // collapsed on the answer) but not switching to another submission.
-    setStreamingReasoning("");
-    setAnswerRelated([]);
-    setIsSaved(true);
-  }, []);
+  const selectSubmission = useCallback(
+    (
+      submission: SerializedAnswer | null,
+      options: { keepQuestion?: boolean } = {},
+    ) => {
+      setAnswer(submission);
+      setCurrentText(submission?.currentText ?? "");
+      // keepQuestion preserves a typed draft (e.g. opening a suggestion):
+      // never silently discard text the user spent time on.
+      if (!options.keepQuestion) {
+        setQuestion(submission?.question ?? "");
+      }
+      setStreamingText("");
+      // Reasoning belongs to a generation event; it survives completion
+      // (shown collapsed on the answer) but not switching submissions.
+      setStreamingReasoning("");
+      setAnswerRelated([]);
+      setIsSaved(true);
+    },
+    [],
+  );
 
   // Read `?a=<id>` and open the matching submission (or reset to a blank
   // workspace if absent/unknown). Reads the latest list from the ref so it can
@@ -329,8 +343,11 @@ export function AnswerWorkspace({ user }: { user: User }) {
     window.history.pushState(null, "", url);
   }
 
-  function openSubmission(submission: SerializedAnswer) {
-    selectSubmission(submission);
+  function openSubmission(
+    submission: SerializedAnswer,
+    options: { keepQuestion?: boolean } = {},
+  ) {
+    selectSubmission(submission, options);
     pushAnswerUrl(submission.id);
     setSheetOpen(false);
   }
@@ -339,6 +356,17 @@ export function AnswerWorkspace({ user }: { user: User }) {
     selectSubmission(null);
     pushAnswerUrl(null);
     setSheetOpen(false);
+  }
+
+  // A [[topic]] without an entry becomes the seed of one: open a fresh
+  // workspace with a suggested question and focus the ask box, so the
+  // related-questions dropdown immediately offers near-matches.
+  function startQuestionForTopic(topic: string) {
+    startNew();
+    setQuestion(suggestQuestionForTopic(topic));
+    requestAnimationFrame(() => {
+      document.getElementById("question")?.focus();
+    });
   }
 
   async function deleteSubmission(id: string) {
@@ -721,7 +749,9 @@ export function AnswerWorkspace({ user }: { user: User }) {
                           (submission) => submission.id === related.id,
                         );
                         if (match) {
-                          openSubmission(match);
+                          // Show the entry below but keep the typed draft —
+                          // the user's text must never vanish on a click.
+                          openSubmission(match, { keepQuestion: true });
                         }
                         setQuestionFocused(false);
                       }}
@@ -853,6 +883,7 @@ export function AnswerWorkspace({ user }: { user: User }) {
                       openSubmission(match);
                     }
                   }}
+                  onCreateCrosslink={startQuestionForTopic}
                 />
                 {answerRelated.length > 0 ? (
                   <div className="flex flex-wrap items-center gap-1.5 text-xs">
@@ -900,7 +931,8 @@ export function AnswerWorkspace({ user }: { user: User }) {
                   <div className="flex items-center gap-3">
                     <p className="text-xs text-muted-foreground">
                       Edit freely — highlights are yours; ⌘/Ctrl-click a
-                      [[link]] to open it.
+                      [[link]] to open its entry, or to start one if it’s
+                      missing.
                     </p>
                     <Button
                       variant="secondary"

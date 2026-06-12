@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { findCrosslinkRanges, resolveCrosslinks } from "@/lib/crosslinks";
+import {
+  findCrosslinkRanges,
+  resolveCrosslinks,
+  suggestQuestionForTopic,
+} from "@/lib/crosslinks";
 
 const subs = [
   { id: "a1", question: "What is entropy?" },
@@ -88,5 +92,24 @@ describe("findCrosslinkRanges", () => {
 
   it("returns nothing for text without wiki-links", () => {
     expect(findCrosslinkRanges("plain text", subs)).toEqual([]);
+  });
+});
+
+describe("suggestQuestionForTopic", () => {
+  it("phrases a bare topic as a question", () => {
+    expect(suggestQuestionForTopic("empathy")).toBe("What is empathy?");
+    expect(suggestQuestionForTopic("  the mind-body problem ")).toBe(
+      "What is the mind-body problem?",
+    );
+  });
+
+  it("keeps a topic that is already a question", () => {
+    expect(suggestQuestionForTopic("Why are we here?")).toBe(
+      "Why are we here?",
+    );
+  });
+
+  it("returns nothing for an empty topic", () => {
+    expect(suggestQuestionForTopic("   ")).toBe("");
   });
 });

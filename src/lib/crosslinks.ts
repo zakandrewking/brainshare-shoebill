@@ -79,6 +79,22 @@ export function normalizeTopic(topic: string): string {
   return normalize(topic);
 }
 
+/**
+ * Turn an unresolved [[topic]] into a question to prefill the ask box with,
+ * so a missing entry is one ⌘-click away from being generated.
+ */
+export function suggestQuestionForTopic(topic: string): string {
+  const trimmed = topic.trim();
+  if (!trimmed) {
+    return "";
+  }
+  // The model occasionally emits a full question as the topic; keep it.
+  if (trimmed.endsWith("?")) {
+    return trimmed;
+  }
+  return `What is ${trimmed}?`;
+}
+
 export type CrosslinkRange = {
   /** Character offsets of the whole `[[...]]` token in the raw text. */
   start: number;
