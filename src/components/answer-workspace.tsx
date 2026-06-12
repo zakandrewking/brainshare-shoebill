@@ -12,7 +12,6 @@ import {
   LogOutIcon,
   PlusIcon,
   RefreshCwIcon,
-  SaveIcon,
   SearchIcon,
   SendIcon,
   Trash2Icon,
@@ -113,6 +112,11 @@ export function AnswerWorkspace({ user }: { user: User }) {
   // Mirror submissions for the popstate handler, which reads the latest list
   // without re-subscribing on every change.
   const submissionsRef = useRef<SerializedAnswer[]>([]);
+  // Latest editor text; lets a finished save know whether it's still current.
+  const currentTextRef = useRef("");
+  useEffect(() => {
+    currentTextRef.current = currentText;
+  });
 
   // Prior questions related to what's being typed, surfaced as autocomplete.
   // The local keyword ranking renders instantly; the server's hybrid
@@ -580,39 +584,78 @@ export function AnswerWorkspace({ user }: { user: User }) {
     }
   }
 
-  async function save() {
-    if (!answer) return;
-    setIsSaving(true);
+  // Persist a snapshot of the edited text. Quiet by design (autosave): no
+  // success toast, and the editor's text is never reset from the response —
+  // keystrokes typed while the request was in flight must survive.
+  const saveText = useCallback(
+    async (answerId: string, text: string) => {
+      setIsSaving(true);
+      try {
+        const response = await authenticatedFetch(
+          user,
+          `/api/answers/${answerId}`,
+          {
+            method: "PATCH",
+            body: JSON.stringify({ currentText: text }),
+          },
+        );
 
-    try {
-      const response = await authenticatedFetch(
-        user,
-        `/api/answers/${answer.id}`,
-        {
-          method: "PATCH",
-          body: JSON.stringify({ currentText }),
-        },
-      );
+        if (!response.ok) {
+          throw new Error(await readError(response));
+        }
 
-      if (!response.ok) {
-        throw new Error(await readError(response));
+        const body = (await response.json()) as {
+          answer: SerializedAnswer;
+        };
+        setAnswer((previous) =>
+          previous?.id === answerId ? body.answer : previous,
+        );
+        // Keep the loaded list fresh (backlinks/related derive from it)
+        // without refetching.
+        setSubmissions((previous) => {
+          const next = previous.map((submission) =>
+            submission.id === answerId ? body.answer : submission,
+          );
+          submissionsRef.current = next;
+          return next;
+        });
+        // Only mark saved when no newer keystrokes arrived mid-flight.
+        if (currentTextRef.current === text) {
+          setIsSaved(true);
+        }
+      } catch (error) {
+        console.error(error);
+        toast.error(describeActionError(error, "saving your changes"));
+      } finally {
+        setIsSaving(false);
       }
+    },
+    [user],
+  );
 
-      const body = (await response.json()) as {
-        answer: SerializedAnswer;
-      };
-      setAnswer(body.answer);
-      setCurrentText(body.answer.currentText);
-      setIsSaved(true);
-      toast.success("Answer saved.");
-      void loadSubmissions();
-    } catch (error) {
-      console.error(error);
-      toast.error(describeActionError(error, "saving your changes"));
-    } finally {
-      setIsSaving(false);
+  // Save as the user types: debounce after the last change, skip while a
+  // request is in flight (the isSaving flip re-arms this effect, catching
+  // text typed mid-save), and stay out of programmatic text updates
+  // (generate/regenerate set their text as already-saved).
+  useEffect(() => {
+    if (!answer || isSaved || isSaving || isGenerating || isRegenerating) {
+      return;
     }
-  }
+    const answerId = answer.id;
+    const text = currentText;
+    const timer = setTimeout(() => {
+      void saveText(answerId, text);
+    }, 800);
+    return () => clearTimeout(timer);
+  }, [
+    currentText,
+    isSaved,
+    isSaving,
+    isGenerating,
+    isRegenerating,
+    answer,
+    saveText,
+  ]);
 
   return (
     <main className="min-h-screen bg-background">
@@ -1012,7 +1055,9 @@ export function AnswerWorkspace({ user }: { user: User }) {
                     </Badge>
                     <span>{userPercent}% edited</span>
                     <span className="flex items-center gap-1">
-                      {isSaved ? (
+                      {isSaving ? (
+                        "Saving"
+                      ) : isSaved ? (
                         <>
                           <CheckIcon className="size-3.5" />
                           Saved
@@ -1022,25 +1067,11 @@ export function AnswerWorkspace({ user }: { user: User }) {
                       )}
                     </span>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <p className="text-xs text-muted-foreground">
-                      Edit freely — highlights are yours; ⌘/Ctrl-click a
-                      [[link]] to open its entry, or to start one if it’s
-                      missing.
-                    </p>
-                    <Button
-                      variant="secondary"
-                      onClick={save}
-                      disabled={isSaved || isSaving}
-                    >
-                      {isSaving ? (
-                        <LoaderCircleIcon className="animate-spin" />
-                      ) : (
-                        <SaveIcon />
-                      )}
-                      {isSaving ? "Saving" : "Save changes"}
-                    </Button>
-                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Saves as you type — highlights are yours; ⌘/Ctrl-click a
+                    [[link]] to open its entry, or to start one if it’s
+                    missing.
+                  </p>
                 </div>
               </CardContent>
             </Card>

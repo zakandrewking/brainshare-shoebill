@@ -17,12 +17,7 @@ confirmation" (shipped + verified, pending the user's check, with a one-line
 
 ## Now
 
-- `[T54]` `wip:claude-fable-5/q3x8@2026-06-12T04:58Z` — **Autosave as the
-  user types (URGENT user ask).** Debounced (~800 ms) quiet PATCH of
-  `currentText` while editing; no toast on success (only on failure); never
-  clobber keystrokes typed while a save is in flight; tri-state footer chip
-  Saving/Saved/Unsaved replaces the manual Save button; update the local
-  submissions copy on save so backlinks/related stay fresh without refetch.
+_(empty — claim the first actionable item in Next/Ideas)_
 
 ## Next
 - `[T50]` `unclaimed` — **Dark-mode + mobile visual review of the CodeMirror
@@ -36,6 +31,13 @@ confirmation" (shipped + verified, pending the user's check, with a one-line
 _(Shipped + verified + deployed; pending the user's check. Confirming moves an
 item to Recently shipped; a problem report moves it back to Now.)_
 
+- `[T54]` Autosave as you type: edits PATCH quietly ~800 ms after the last
+  keystroke (no success toast; errors still toast; keystrokes typed during an
+  in-flight save are never clobbered and trigger a follow-up save). The
+  manual Save button is gone; the footer chip reads Saving/Saved/Unsaved and
+  the hint says "Saves as you type". The local submissions copy updates on
+  each save so backlinks/related stay fresh. CHECK: edit an answer, pause a
+  second — chip flips Unsaved → Saving → Saved; reload and the edit is there.
 - `[T52]` Inline citations (academia style): the system prompt now demands
   parenthetical author–year citations at the claims they support, matching
   the bottom References list 1:1, no invented sources. CHECK: regenerate any
