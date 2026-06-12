@@ -19,15 +19,15 @@ commits) may be reclaimed. On completion, move the item to "Recently shipped".
   `bad auth`.** Vercel prod logs show `/api/answers` GET+POST returning 500 with
   `MongoServerError: bad auth : Authentication failed` (Atlas code 8000,
   HandshakeError) — recurring through 2026-06-12T00:48Z. The `MONGODB_URI`
-  credentials in Vercel Production are being rejected by Atlas. Almost certainly
-  a wrong/rotated DB-user password or an Atlas user that no longer exists. Likely
-  user action (correct secret): verify the Atlas DB user + password, re-set
-  `MONGODB_URI` in Vercel Production, redeploy. This is what "still broken on
-  prod" refers to (data layer; separate from the T14 GitHub-login issue).
-- `[T24]` `unclaimed` — **Two "thinking" indicators showing; want only one**
-  (ideally render the thinking process nicely). Streaming card likely shows both
-  the "Thinking…" header/placeholder AND the collapsible reasoning box at once
-  (T22). Dedupe to a single, polished thinking affordance.
+  credentials in Vercel Production are being rejected by Atlas (wrong/rotated
+  DB-user password, or a user that doesn't exist on this cluster). Confirmed
+  Firebase auth passes BEFORE the DB call in `route.ts`, so login works — this is
+  purely the data layer (separate from T14). User prefers raw CLI commands (no
+  helper script). FIX (needs correct secret — user): test a candidate URI with
+  `mongosh "<uri>" --eval 'db.runCommand({ping:1})'`, fix the DB user/password in
+  Atlas → Database Access, then re-set `MONGODB_URI` in Vercel Production
+  (`vercel env rm MONGODB_URI production` + `vercel env add MONGODB_URI
+  production`) and redeploy (`vercel --prod` or `vercel redeploy <url>`).
 - `[T14]` `wip:claude-opus-4.8/ae44@2026-06-11T15:28Z` (taken over from 9yf1, user-directed) — **Prod GitHub login is
   still broken.** CODE DONE (pushed): auth-gate now (a) surfaces the real
   Firebase error code instead of a generic message, (b) falls back from
@@ -50,6 +50,13 @@ commits) may be reclaimed. On completion, move the item to "Recently shipped".
 
 ## Recently shipped
 
+- [x] `[T24]` Deduped the streaming card's two "thinking" indicators down to one.
+      The header `CardTitle` is now the sole status label ("Thinking…" →
+      "Writing"/"Regenerating"); the body's reasoning box is relabeled "Thought
+      process" (live + expanded while thinking, collapses once prose starts,
+      italic + scrollable max-h-64), and the pre-reasoning placeholder is a quiet
+      animated pulse with an `sr-only` "Thinking…" instead of a second visible
+      label. lint+typecheck+21 tests+build green.
 - [x] `[T23]` Documented how to pull Vercel production logs in AGENTS.md
       ("Production Logs & Observability"): CLI is preinstalled, auth via
       `VERCEL_ACCESS_TOKEN`, `vercel link` once per container, and the go-to

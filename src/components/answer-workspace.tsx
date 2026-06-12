@@ -613,12 +613,20 @@ export function AnswerWorkspace({ user }: { user: User }) {
               </div>
             </CardHeader>
             <CardContent className="space-y-3">
+              {/* The single "thinking" affordance: the model's live reasoning.
+                  Open while it's still thinking; collapses to a disclosure once
+                  the prose starts so the answer takes focus. The header above is
+                  the only status label, so this panel reads as the content
+                  ("Thought process"), not a second "Thinking" indicator. */}
               {streamingReasoning ? (
-                <details open className="retro-sunken p-3 text-sm">
+                <details
+                  open={!streamingText}
+                  className="retro-sunken p-3 text-sm"
+                >
                   <summary className="cursor-pointer font-medium text-muted-foreground">
-                    Thinking
+                    Thought process
                   </summary>
-                  <div className="mt-2 whitespace-pre-wrap text-muted-foreground">
+                  <div className="mt-2 max-h-64 overflow-y-auto whitespace-pre-wrap text-muted-foreground italic">
                     {streamingReasoning}
                   </div>
                 </details>
@@ -636,9 +644,14 @@ export function AnswerWorkspace({ user }: { user: User }) {
                     {streamingText}
                   </Streamdown>
                 </div>
-              ) : (
-                <div className="retro-sunken flex min-h-40 items-center justify-center p-5 text-sm text-muted-foreground">
-                  {streamingReasoning ? "Forming an answer…" : "Thinking…"}
+              ) : streamingReasoning ? null : (
+                // Pre-reasoning gap (high effort can stall here): a quiet pulse,
+                // not a second "Thinking…" label — the header already says it.
+                <div className="retro-sunken flex min-h-40 items-center justify-center gap-2 p-5 text-muted-foreground">
+                  <span className="size-2 animate-bounce bg-current [animation-delay:-0.3s]" />
+                  <span className="size-2 animate-bounce bg-current [animation-delay:-0.15s]" />
+                  <span className="size-2 animate-bounce bg-current" />
+                  <span className="sr-only">Thinking…</span>
                 </div>
               )}
             </CardContent>
