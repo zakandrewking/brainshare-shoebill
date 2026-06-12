@@ -5,9 +5,11 @@ import Image from "next/image";
 import { signOut, type User } from "firebase/auth";
 import {
   CheckIcon,
+  EyeIcon,
   LayersIcon,
   LoaderCircleIcon,
   LogOutIcon,
+  PencilIcon,
   PlusIcon,
   RefreshCwIcon,
   SaveIcon,
@@ -39,7 +41,7 @@ import {
 } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
 import { attributeText, attributionCounts } from "@/lib/attribution";
-import { resolveCrosslinks } from "@/lib/crosslinks";
+import { findCrosslinkRanges, resolveCrosslinks } from "@/lib/crosslinks";
 import { findRelatedQuestions } from "@/lib/related";
 import { getFirebaseAuth } from "@/lib/firebase/client";
 import type { SerializedAnswer } from "@/lib/types";
@@ -94,6 +96,9 @@ export function AnswerWorkspace({ user }: { user: User }) {
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isSaved, setIsSaved] = useState(true);
+  // The answer is one surface: rendered prose that flips to the attribution
+  // editor on click/Edit and back on blur.
+  const [isEditing, setIsEditing] = useState(false);
   const [submissions, setSubmissions] = useState<SerializedAnswer[]>([]);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [questionFocused, setQuestionFocused] = useState(false);
@@ -160,6 +165,12 @@ export function AnswerWorkspace({ user }: { user: User }) {
     () => resolveCrosslinks(currentText, submissions, { excludeId: answer?.id }),
     [currentText, submissions, answer?.id],
   );
+  // Raw [[topic]] ranges, recomputed per keystroke (pure, client-side) so the
+  // editor can show a link resolving the moment it matches a submission.
+  const crosslinkRanges = useMemo(
+    () => findCrosslinkRanges(currentText, submissions, { excludeId: answer?.id }),
+    [currentText, submissions, answer?.id],
+  );
   const counts = useMemo(() => attributionCounts(segments), [segments]);
   const userPercent =
     counts.ai + counts.user
@@ -190,6 +201,7 @@ export function AnswerWorkspace({ user }: { user: User }) {
     setQuestion(submission?.question ?? "");
     setStreamingText("");
     setIsSaved(true);
+    setIsEditing(false);
   }, []);
 
   // Read `?a=<id>` and open the matching submission (or reset to a blank
@@ -703,7 +715,7 @@ export function AnswerWorkspace({ user }: { user: User }) {
               <CardHeader>
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
-                    <CardTitle>Rendered answer</CardTitle>
+                    <CardTitle>Answer</CardTitle>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
                     <Badge variant="outline">
@@ -722,20 +734,46 @@ export function AnswerWorkspace({ user }: { user: User }) {
                       )}
                       {isRegenerating ? "Regenerating..." : "Regenerate"}
                     </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      aria-pressed={isEditing}
+                      onClick={() => setIsEditing((editing) => !editing)}
+                    >
+                      {isEditing ? <EyeIcon /> : <PencilIcon />}
+                      {isEditing ? "View" : "Edit"}
+                    </Button>
                   </div>
                 </div>
               </CardHeader>
-              <CardContent>
-                <div className="retro-sunken literary-prose min-h-32 p-5">
-                  <Streamdown mode="static">{renderedText}</Streamdown>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <CardTitle>Edit answer</CardTitle>
+              <CardContent className="space-y-3">
+                {isEditing ? (
+                  <HighlightedEditor
+                    value={currentText}
+                    segments={segments}
+                    crosslinks={crosslinkRanges}
+                    autoFocus
+                    onBlur={() => setIsEditing(false)}
+                    onChange={(next) => {
+                      setCurrentText(next);
+                      setIsSaved(false);
+                    }}
+                  />
+                ) : (
+                  <div
+                    className="retro-sunken literary-prose min-h-32 cursor-text p-5"
+                    onClick={(event) => {
+                      // Crosslinks inside the prose still navigate; clicking
+                      // anywhere else flips this surface into the editor.
+                      if (!(event.target as HTMLElement).closest("a")) {
+                        setIsEditing(true);
+                      }
+                    }}
+                  >
+                    <Streamdown mode="static">{renderedText}</Streamdown>
+                  </div>
+                )}
+                <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                     <Badge variant="secondary">AI: {counts.ai} chars</Badge>
                     <Badge className="bg-sky-500/12 text-sky-700 dark:text-sky-300">
@@ -753,33 +791,25 @@ export function AnswerWorkspace({ user }: { user: User }) {
                       )}
                     </span>
                   </div>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <HighlightedEditor
-                  value={currentText}
-                  segments={segments}
-                  onChange={(next) => {
-                    setCurrentText(next);
-                    setIsSaved(false);
-                  }}
-                />
-                <div className="flex items-center justify-between gap-3">
-                  <p className="text-xs text-muted-foreground">
-                    Highlighted text is yours; the rest is the AI baseline.
-                  </p>
-                  <Button
-                    variant="secondary"
-                    onClick={save}
-                    disabled={isSaved || isSaving}
-                  >
-                    {isSaving ? (
-                      <LoaderCircleIcon className="animate-spin" />
-                    ) : (
-                      <SaveIcon />
-                    )}
-                    {isSaving ? "Saving..." : "Save changes"}
-                  </Button>
+                  <div className="flex items-center gap-3">
+                    <p className="text-xs text-muted-foreground">
+                      {isEditing
+                        ? "Highlighted text is yours; [[links]] light up as they match."
+                        : "Click the answer to edit it."}
+                    </p>
+                    <Button
+                      variant="secondary"
+                      onClick={save}
+                      disabled={isSaved || isSaving}
+                    >
+                      {isSaving ? (
+                        <LoaderCircleIcon className="animate-spin" />
+                      ) : (
+                        <SaveIcon />
+                      )}
+                      {isSaving ? "Saving..." : "Save changes"}
+                    </Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>

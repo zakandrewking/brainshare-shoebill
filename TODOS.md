@@ -11,24 +11,16 @@ never just the model name. Claim an item by setting the status to your handle
 and committing+pushing *before* you start work. If your push is rejected,
 someone claimed first — pull and pick another. Stale claims (>30 min, no new
 commits) may be reclaimed. On completion, move the item to "Recently shipped".
-**Next free id: T35.**
+**Next free id: T36.**
 
 ## Now
 
-- `[T33]` `wip:claude-fable-5/q3x8@2026-06-12T02:44Z` — **Merge the "Rendered
-  answer" and "Edit answer" cards into one Answer section.** One card, one
-  surface: rendered literary prose by default; focusing/clicking flips the
-  same well to the HighlightedEditor (attribution intact), blurring flips
-  back to the rendered view. Header keeps provider badge + Regenerate;
-  footer keeps attribution stats + save state + Save.
-- `[T34]` `wip:claude-fable-5/q3x8@2026-06-12T02:44Z` — **Cross-linking must
-  feel instantaneous and update in real time (refines T33).** Rendered
-  crosslinks already resolve client-side per keystroke; keep that property in
-  the merged single-surface design: while editing, decorate resolved
-  `[[topic]]` spans live inside the editor mirror (color/underline — raw text
-  unchanged so highlight alignment holds), and the on-blur rendered view
-  shows full clickable links with zero delay (pure client-side resolution, no
-  network).
+- `[T35]` `wip:claude-fable-5/q3x8@2026-06-12T02:50Z` — **System prompt:
+  demand references.** (Asked 2026-06-12 — no prior to-do existed for this.)
+  Update the `lib/ai.ts` system prompt to require the model to cite
+  references for factual/philosophical claims (a short "References" list of
+  thinkers/works after the answer paragraph), without breaking the
+  one-paragraph / no-headings / `[[crosslink]]` rules.
 
 ## Next
 
@@ -36,6 +28,19 @@ _(empty — promote from Ideas when ready)_
 
 ## Recently shipped
 
+- [x] `[T33]`+`[T34]` **One Answer surface with real-time cross-linking.**
+      The "Rendered answer" and "Edit answer" cards are merged into a single
+      "Answer" card: rendered literary prose by default; clicking the prose
+      (or Edit) flips the same well into the HighlightedEditor (autofocused),
+      blurring or toggling View flips back — header keeps provider badge +
+      Regenerate + Edit/View, footer keeps attribution stats, saved state,
+      and Save. Cross-links stay instantaneous: new pure
+      `findCrosslinkRanges`/`decorateSegments` (same matching rules as
+      `resolveCrosslinks`) let the editor mirror underline/color `[[topic]]`
+      spans the moment they match a submission, per keystroke, without
+      touching raw text (alignment preserved); the rendered view's clickable
+      links resolve synchronously client-side. 6 new tests (53 total);
+      verify green.
 - [x] `[T32]` "Load failed" warning investigated + hardened. Diagnosis: the
       toast was Safari's raw TypeError for a fetch that failed at the network
       level (likely a transient blip — three deploys promoted within ~13 min
