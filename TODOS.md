@@ -11,12 +11,13 @@ never just the model name. Claim an item by setting the status to your handle
 and committing+pushing *before* you start work. If your push is rejected,
 someone claimed first — pull and pick another. Stale claims (>30 min, no new
 commits) may be reclaimed. On completion, move the item to "Recently shipped".
-**Next free id: T28.**
+**Next free id: T29.**
 
 ## Now
 
-- `[T14]` `wip:claude-opus-4.8/ae44@2026-06-11T15:28Z` (taken over from 9yf1, user-directed) — **Prod GitHub login is
-  still broken.** CODE DONE (pushed): auth-gate now (a) surfaces the real
+- `[T14]` `unclaimed` (stale wip claude-opus-4.8/ae44 released 2026-06-12;
+  code is done — item is blocked on the USER CHECKLIST below) — **Prod GitHub
+  login is still broken.** CODE DONE (pushed): auth-gate now (a) surfaces the real
   Firebase error code instead of a generic message, (b) falls back from
   `signInWithPopup` to `signInWithRedirect` on popup/COOP failures, and (c)
   handles `getRedirectResult` + allowlist on return. Root cause is almost
@@ -37,6 +38,14 @@ commits) may be reclaimed. On completion, move the item to "Recently shipped".
 
 ## Recently shipped
 
+- [x] `[T28]` Session handoff saved (2026-06-12). State: prod-data API access
+      (T24–T27) fully shipped and verified; `SERVICE_API_TOKEN` lives in Vercel
+      Production (type `encrypted`) AND the Claude environment env vars; usage
+      documented in AGENTS.md → "Prod Data Access (agents)". Open work: `[T14]`
+      (blocked on the user console checklist) and `[T13]` (needs an
+      embeddings/vector-store infra decision + Atlas index access). Agent
+      sandbox notes: Mongo 27017 egress is blocked (HTTPS only), Vercel
+      CLI works via `VERCEL_ACCESS_TOKEN`.
 - [x] `[T27]` `SERVICE_API_TOKEN` "looked empty": the CLI had created it as
       type **sensitive** (write-only — runtime sees it, but `vercel env pull`
       and the dashboard return `""` by design). Deleted and recreated it as
@@ -55,9 +64,9 @@ commits) may be reclaimed. On completion, move the item to "Recently shipped".
       against brainshare.io: 200 + real data with token (typed route + find),
       401 without/with wrong token, 400 for `$where` and unknown collections.
       14 new unit tests; `pnpm verify` green. Documented in AGENTS.md → "Prod
-      Data Access (agents)". USER: add `SERVICE_API_TOKEN` to the Claude
-      environment env vars (value: Vercel dashboard or `vercel env pull`) so
-      future sessions can query prod.
+      Data Access (agents)". DONE 2026-06-12: user added `SERVICE_API_TOKEN`
+      to the Claude environment env vars — future agent sessions can query
+      prod directly with `$SERVICE_API_TOKEN`.
 - [x] `[T26]` "Never wait" codified in AGENTS.md Working Agreement: deliver a
       requested plan and immediately execute it; no pausing for approval.
 - [x] `[T24]` Planned token-based prod-data access over the API; concrete

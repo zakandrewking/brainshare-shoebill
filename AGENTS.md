@@ -144,6 +144,11 @@ Agent sandboxes often allow only HTTPS egress, so the Mongo wire protocol
 - `SERVICE_API_TOKEN` (Vercel Production env var, never committed) is accepted
   by every protected route as `Authorization: Bearer <token>`. It acts as the
   primary allowlisted user — same scope, no superuser path.
+- The same token is set as `SERVICE_API_TOKEN` in the Claude Code remote
+  environment, so agent sessions can use it directly (`$SERVICE_API_TOKEN`).
+  `VERCEL_ACCESS_TOKEN` is also set there for `vercel` CLI access (logs,
+  deployments, env). In Vercel, keep it type `encrypted`, not `sensitive` —
+  sensitive vars read back as `""` from `vercel env pull` and the dashboard.
 - Typed CRUD: `GET/POST /api/answers`, `PATCH/PUT/DELETE /api/answers/[id]`.
 - Ad-hoc read-only queries: `POST /api/admin/find` (service token only) with
   `{ collection: "answers", filter: { field: scalar }, projection?, sort?,
