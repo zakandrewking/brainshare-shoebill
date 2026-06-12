@@ -11,11 +11,23 @@ never just the model name. Claim an item by setting the status to your handle
 and committing+pushing *before* you start work. If your push is rejected,
 someone claimed first — pull and pick another. Stale claims (>30 min, no new
 commits) may be reclaimed. On completion, move the item to "Recently shipped".
-**Next free id: T52.**
+**Next free id: T54.**
 
 ## Now
 
-_(empty — claim the first actionable item in Next/Ideas)_
+- `[T52]` `wip:claude-fable-5/q3x8@2026-06-12T04:45Z` — **Inline citations
+  (academia style).** References must appear inline as parenthetical
+  author–year citations — e.g. (Nagel 1974) — at the claims they support, in
+  addition to the "References:" list at the bottom; the two must correspond.
+  Update the system prompt + mock provider text.
+- `[T53]` `wip:claude-fable-5/q3x8@2026-06-12T04:45Z` — **New working rule:
+  shipped ≠ done; the user confirms.** Add to AGENTS.md: never assume a task
+  is done — after verification it goes to a new TODOS "Awaiting confirmation"
+  section with a one-line "how to check"; only user confirmation moves it to
+  Recently shipped. Check in periodically with a compact confirmation list,
+  but keep working — awaiting confirmation is not a blocker. Restructure
+  TODOS.md accordingly and move today's user-facing items (incl. `[T43]`,
+  which the user asked about) into the new section.
 
 ## Next
 - `[T50]` `unclaimed` — **Dark-mode + mobile visual review of the CodeMirror
