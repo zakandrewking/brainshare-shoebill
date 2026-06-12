@@ -11,11 +11,15 @@ never just the model name. Claim an item by setting the status to your handle
 and committing+pushing *before* you start work. If your push is rejected,
 someone claimed first — pull and pick another. Stale claims (>30 min, no new
 commits) may be reclaimed. On completion, move the item to "Recently shipped".
-**Next free id: T30.**
+**Next free id: T31.**
 
 ## Now
 
-_(empty — claim the first actionable item in Next/Ideas)_
+- `[T30]` `wip:claude-fable-5/q3x8@2026-06-12T02:33Z` — **Related-questions
+  dropdown covers the submit button.** The suggestions overlay is absolutely
+  positioned below the textarea and sits on top of the "Generate answer"
+  button row, blocking clicks. Fix: render the suggestions in normal flow so
+  they push the button down instead of covering it.
 
 ## Next
 
