@@ -5,9 +5,14 @@
 - Work autonomously from diagnosis through implementation and verification.
 - You are authorized to create focused commits and push them often. Do not ask
   for permission before committing or pushing coherent changes.
-- **Always push to `main`.** When work is committed and verified, fast-forward
-  (or merge) it onto `main` and push so it deploys to production — no need to
-  ask each time. Vercel autodeploys `main`.
+- **Always push to `main` — never ask first.** When work is committed and
+  verified, fast-forward (or merge) it onto `main` and push immediately so it
+  deploys to production. This is standing, durable authorization: do NOT ask
+  "should I push to main?", do NOT stop at a feature branch waiting for
+  approval, and do NOT offer it as an option — just do it every time. Even when
+  the session was started on a feature branch, the end state is `main`: merge
+  the branch into `main` and push. Vercel autodeploys `main`. The only reasons
+  to hold back are an unresolved blocker or failing verification.
 - **Always advance the backlog.** When you finish an item, immediately claim and
   start the next ready one in `TODOS.md` (top of **Now**, otherwise the first
   actionable item in **Next**, skipping items another agent has claimed). Keep
