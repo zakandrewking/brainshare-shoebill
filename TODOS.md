@@ -15,35 +15,14 @@ commits) may be reclaimed. On completion, move the item to "Recently shipped".
 
 ## Now
 
-- `[T39]` `claimed:claude-fable-5/q3x8@2026-06-12T03:04Z` — **"I'm not seeing
-  any cross-linking happening" — consciousness ↔ bat should be semantically
-  related.** Two gaps: (1) `[[topic]]` links only appear if the model emitted
-  the token AND it lexically matches another question — diagnose whether prod
-  answers even contain `[[...]]`; (2) cross-link resolution is lexical, not
-  semantic. Fix the visible half first: an automatic "Related" links row on
-  the answer card driven by the existing hybrid `/api/related` (question as
-  query) — entries cross-link with zero model cooperation.
-- `[T40]` `unclaimed` — **Semantic `[[topic]]` resolution.** When a model-
-  emitted `[[topic]]` doesn't match any question lexically, resolve it by
-  embedding similarity (new endpoint reusing the stored question embeddings;
-  client merges results into the live crosslink decorations, cached
-  per topic). Keeps the instant lexical path; semantic matches light up when
-  the lookup lands.
-
-- `[T37]` `wip:claude-fable-5/q3x8@2026-06-12T03:00Z` — **One live markdown
-  answer surface (CodeMirror).** Replace the flip (rendered ⇄ editor) shipped
-  in T33 with a single always-editable CodeMirror 6 markdown editor: live
-  markdown styling (headings/bold/italic/links/quotes styled as you type),
-  attribution decorations (user text tinted) and crosslink decorations
-  ([[topic]] underlined when resolved, muted when not) recomputed per
-  keystroke, ⌘/Ctrl+click on a resolved [[link]] opens that submission.
-  Removes HighlightedEditor + decorateSegments (superseded).
-- `[T38]` `wip:claude-fable-5/q3x8@2026-06-12T03:00Z` — **Thinking panel:
-  collapsed by default AND persists after generation.** Keep the reasoning
-  summary visible (collapsed `<details>`) on the answer card once streaming
-  finishes — currently it vanishes with the streaming card. Ephemeral per
-  session (still not persisted to the DB); cleared when switching
-  submissions.
+- `[T40]` `wip:claude-fable-5/q3x8@2026-06-12T03:15Z` — **Semantic `[[topic]]`
+  resolution.** When a model-emitted `[[topic]]` doesn't match any question
+  lexically, resolve it by embedding similarity (new endpoint reusing the
+  stored question embeddings; client merges results into the live crosslink
+  decorations, cached per topic). Keeps the instant lexical path; semantic
+  matches light up when the lookup lands. Context (T39 diagnosis): every prod
+  answer DOES carry `[[tokens]]` (ethics, empathy, consciousness, subjective
+  experience…) but none match a question lexically, so nothing ever linked.
 
 ## Next
 
@@ -51,6 +30,20 @@ _(empty — promote from Ideas when ready)_
 
 ## Recently shipped
 
+- [x] `[T37]`+`[T38]`+`[T39]` **CodeMirror live markdown surface; persistent
+      Thinking; automatic Related links.** The answer card is now ONE
+      always-editable CodeMirror 6 markdown editor (live heading/bold/italic/
+      link/quote styling in the literary serif, line-wrapped, retro-sunken):
+      attribution decorations tint user-authored ranges and `[[topic]]`
+      decorations light up per keystroke (underlined+titled when resolved,
+      muted when not), ⌘/Ctrl-click opens the linked submission. Replaces the
+      T33 flip; HighlightedEditor + decorateSegments removed. The reasoning
+      panel stays after generation finishes as a collapsed `<details>` on the
+      answer card (ephemeral; cleared on submission switch). A "Related" row
+      under the editor hybrid-searches the open question via `/api/related`
+      so entries cross-link automatically (consciousness ↔ bat) with zero
+      model cooperation. T39 diagnosis: prod answers all contain `[[tokens]]`
+      but none matched lexically — semantic resolution is T40.
 - [x] `[T36]` "What happened to our code mirror project?" — investigated:
       ZERO trace of CodeMirror in this repo (working tree, all 68 commits on
       all branches, package.json history) or in any `zakandrewking` GitHub

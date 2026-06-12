@@ -5,11 +5,10 @@ import Image from "next/image";
 import { signOut, type User } from "firebase/auth";
 import {
   CheckIcon,
-  EyeIcon,
   LayersIcon,
+  LinkIcon,
   LoaderCircleIcon,
   LogOutIcon,
-  PencilIcon,
   PlusIcon,
   RefreshCwIcon,
   SaveIcon,
@@ -20,7 +19,7 @@ import {
 import { toast } from "sonner";
 import { Streamdown } from "streamdown";
 
-import { HighlightedEditor } from "@/components/highlighted-editor";
+import { LiveMarkdownEditor } from "@/components/live-markdown-editor";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -41,7 +40,7 @@ import {
 } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
 import { attributeText, attributionCounts } from "@/lib/attribution";
-import { findCrosslinkRanges, resolveCrosslinks } from "@/lib/crosslinks";
+import { findCrosslinkRanges } from "@/lib/crosslinks";
 import { findRelatedQuestions } from "@/lib/related";
 import { getFirebaseAuth } from "@/lib/firebase/client";
 import type { SerializedAnswer } from "@/lib/types";
@@ -96,9 +95,11 @@ export function AnswerWorkspace({ user }: { user: User }) {
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isSaved, setIsSaved] = useState(true);
-  // The answer is one surface: rendered prose that flips to the attribution
-  // editor on click/Edit and back on blur.
-  const [isEditing, setIsEditing] = useState(false);
+  // Submissions semantically related to the open answer, shown as links so
+  // entries cross-link even when the text carries no [[topic]] tokens.
+  const [answerRelated, setAnswerRelated] = useState<
+    { id: string; question: string }[]
+  >([]);
   const [submissions, setSubmissions] = useState<SerializedAnswer[]>([]);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [questionFocused, setQuestionFocused] = useState(false);
@@ -155,15 +156,40 @@ export function AnswerWorkspace({ user }: { user: User }) {
   const showRelated =
     questionFocused && !isGenerating && displayedRelated.length > 0;
 
+  // Hybrid-search the open answer's question so related entries cross-link
+  // automatically, independent of any [[topic]] tokens in the text. Keyed on
+  // id+question (not the answer object) so saves don't refetch.
+  const answerId = answer?.id;
+  const answerQuestion = answer?.question;
+  useEffect(() => {
+    if (!answerId || !answerQuestion) {
+      return;
+    }
+    let stale = false;
+    void (async () => {
+      try {
+        const response = await authenticatedFetch(user, "/api/related", {
+          method: "POST",
+          body: JSON.stringify({ query: answerQuestion, excludeId: answerId }),
+        });
+        if (!response.ok || stale) return;
+        const body = (await response.json()) as {
+          questions: { id: string; question: string }[];
+        };
+        setAnswerRelated(body.questions);
+      } catch (error) {
+        // Related links are an enhancement; fail to an empty row silently.
+        console.error(error);
+      }
+    })();
+    return () => {
+      stale = true;
+    };
+  }, [answerId, answerQuestion, user]);
+
   const segments = useMemo(
     () => (answer ? attributeText(answer.aiText, currentText) : []),
     [answer, currentText],
-  );
-  // Resolve [[Topic]] wiki-links against other submissions for the rendered
-  // view only; the editor keeps the raw text so edits stay authorable.
-  const renderedText = useMemo(
-    () => resolveCrosslinks(currentText, submissions, { excludeId: answer?.id }),
-    [currentText, submissions, answer?.id],
   );
   // Raw [[topic]] ranges, recomputed per keystroke (pure, client-side) so the
   // editor can show a link resolving the moment it matches a submission.
@@ -200,8 +226,11 @@ export function AnswerWorkspace({ user }: { user: User }) {
     setCurrentText(submission?.currentText ?? "");
     setQuestion(submission?.question ?? "");
     setStreamingText("");
+    // Reasoning belongs to a generation event; it survives completion (shown
+    // collapsed on the answer) but not switching to another submission.
+    setStreamingReasoning("");
+    setAnswerRelated([]);
     setIsSaved(true);
-    setIsEditing(false);
   }, []);
 
   // Read `?a=<id>` and open the matching submission (or reset to a blank
@@ -734,45 +763,62 @@ export function AnswerWorkspace({ user }: { user: User }) {
                       )}
                       {isRegenerating ? "Regenerating..." : "Regenerate"}
                     </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      aria-pressed={isEditing}
-                      onClick={() => setIsEditing((editing) => !editing)}
-                    >
-                      {isEditing ? <EyeIcon /> : <PencilIcon />}
-                      {isEditing ? "View" : "Edit"}
-                    </Button>
                   </div>
                 </div>
               </CardHeader>
               <CardContent className="space-y-3">
-                {isEditing ? (
-                  <HighlightedEditor
-                    value={currentText}
-                    segments={segments}
-                    crosslinks={crosslinkRanges}
-                    autoFocus
-                    onBlur={() => setIsEditing(false)}
-                    onChange={(next) => {
-                      setCurrentText(next);
-                      setIsSaved(false);
-                    }}
-                  />
-                ) : (
-                  <div
-                    className="retro-sunken literary-prose min-h-32 cursor-text p-5"
-                    onClick={(event) => {
-                      // Crosslinks inside the prose still navigate; clicking
-                      // anywhere else flips this surface into the editor.
-                      if (!(event.target as HTMLElement).closest("a")) {
-                        setIsEditing(true);
-                      }
-                    }}
-                  >
-                    <Streamdown mode="static">{renderedText}</Streamdown>
+                {streamingReasoning && !isGenerating && !isRegenerating ? (
+                  <details className="retro-sunken p-3 text-sm">
+                    <summary className="cursor-pointer font-medium text-muted-foreground">
+                      Thinking
+                    </summary>
+                    <div className="mt-2 whitespace-pre-wrap text-muted-foreground">
+                      {streamingReasoning}
+                    </div>
+                  </details>
+                ) : null}
+                <LiveMarkdownEditor
+                  value={currentText}
+                  segments={segments}
+                  crosslinks={crosslinkRanges}
+                  onChange={(next) => {
+                    setCurrentText(next);
+                    setIsSaved(false);
+                  }}
+                  onOpenCrosslink={(id) => {
+                    const match = submissions.find(
+                      (submission) => submission.id === id,
+                    );
+                    if (match) {
+                      openSubmission(match);
+                    }
+                  }}
+                />
+                {answerRelated.length > 0 ? (
+                  <div className="flex flex-wrap items-center gap-1.5 text-xs">
+                    <span className="flex items-center gap-1 text-muted-foreground">
+                      <LinkIcon className="size-3" />
+                      Related:
+                    </span>
+                    {answerRelated.map((related) => (
+                      <button
+                        key={related.id}
+                        type="button"
+                        onClick={() => {
+                          const match = submissions.find(
+                            (submission) => submission.id === related.id,
+                          );
+                          if (match) {
+                            openSubmission(match);
+                          }
+                        }}
+                        className="text-primary underline decoration-dotted underline-offset-2 hover:decoration-solid"
+                      >
+                        {related.question}
+                      </button>
+                    ))}
                   </div>
-                )}
+                ) : null}
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                     <Badge variant="secondary">AI: {counts.ai} chars</Badge>
@@ -793,9 +839,8 @@ export function AnswerWorkspace({ user }: { user: User }) {
                   </div>
                   <div className="flex items-center gap-3">
                     <p className="text-xs text-muted-foreground">
-                      {isEditing
-                        ? "Highlighted text is yours; [[links]] light up as they match."
-                        : "Click the answer to edit it."}
+                      Edit freely — highlights are yours; ⌘/Ctrl-click a
+                      [[link]] to open it.
                     </p>
                     <Button
                       variant="secondary"

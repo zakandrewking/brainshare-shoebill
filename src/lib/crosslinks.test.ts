@@ -1,10 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  decorateSegments,
-  findCrosslinkRanges,
-  resolveCrosslinks,
-} from "@/lib/crosslinks";
+import { findCrosslinkRanges, resolveCrosslinks } from "@/lib/crosslinks";
 
 const subs = [
   { id: "a1", question: "What is entropy?" },
@@ -58,18 +54,18 @@ describe("resolveCrosslinks", () => {
 });
 
 describe("findCrosslinkRanges", () => {
-  it("reports token offsets and resolution against submissions", () => {
+  it("reports token offsets, resolution, and target against submissions", () => {
     const text = "See [[entropy]] and [[qualia]].";
     expect(findCrosslinkRanges(text, subs)).toEqual([
-      { start: 4, end: 15, resolved: true },
+      { start: 4, end: 15, resolved: true, targetId: "a1" },
       { start: 20, end: 30, resolved: false },
     ]);
   });
 
   it("matches resolveCrosslinks rules (labels, exclusion)", () => {
     expect(
-      findCrosslinkRanges("[[entropy|disorder]]", subs)[0]?.resolved,
-    ).toBe(true);
+      findCrosslinkRanges("[[entropy|disorder]]", subs)[0]?.targetId,
+    ).toBe("a1");
     expect(
       findCrosslinkRanges("[[entropy]]", subs, { excludeId: "a1" })[0]
         ?.resolved,
@@ -78,41 +74,5 @@ describe("findCrosslinkRanges", () => {
 
   it("returns nothing for text without wiki-links", () => {
     expect(findCrosslinkRanges("plain text", subs)).toEqual([]);
-  });
-});
-
-describe("decorateSegments", () => {
-  const segments = [
-    { text: "See [[ent", source: "ai" as const },
-    { text: "ropy]] now", source: "user" as const },
-  ];
-  const ranges = [{ start: 4, end: 15, resolved: true }];
-
-  it("splits attribution spans at crosslink boundaries, preserving text", () => {
-    const pieces = decorateSegments(segments, ranges);
-    expect(pieces.map((p) => p.text).join("")).toBe("See [[entropy]] now");
-    expect(pieces).toEqual([
-      { text: "See ", source: "ai", link: null },
-      { text: "[[ent", source: "ai", link: "resolved" },
-      { text: "ropy]]", source: "user", link: "resolved" },
-      { text: " now", source: "user", link: null },
-    ]);
-  });
-
-  it("passes segments through untouched when there are no ranges", () => {
-    expect(decorateSegments(segments, [])).toEqual([
-      { text: "See [[ent", source: "ai", link: null },
-      { text: "ropy]] now", source: "user", link: null },
-    ]);
-  });
-
-  it("marks unresolved links distinctly", () => {
-    const pieces = decorateSegments(
-      [{ text: "[[qualia]]", source: "ai" as const }],
-      [{ start: 0, end: 10, resolved: false }],
-    );
-    expect(pieces).toEqual([
-      { text: "[[qualia]]", source: "ai", link: "unresolved" },
-    ]);
   });
 });

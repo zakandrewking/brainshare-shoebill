@@ -1,4 +1,3 @@
-import type { AttributionSegment } from "@/lib/attribution";
 import type { SerializedAnswer } from "@/lib/types";
 
 // Wiki-style links the model is asked to emit: [[Topic]] or [[Topic|Display]].
@@ -80,6 +79,8 @@ export type CrosslinkRange = {
   end: number;
   /** Whether the topic resolves to an existing submission. */
   resolved: boolean;
+  /** The submission the topic resolves to, when it does. */
+  targetId?: string;
 };
 
 /**
@@ -100,63 +101,14 @@ export function findCrosslinkRanges(
   const candidates = linkCandidates(submissions, options.excludeId);
   const ranges: CrosslinkRange[] = [];
   for (const match of text.matchAll(WIKILINK)) {
+    const target = resolveTarget(match[1], candidates);
     ranges.push({
       start: match.index,
       end: match.index + match[0].length,
-      resolved: resolveTarget(match[1], candidates) !== undefined,
+      resolved: target !== undefined,
+      ...(target ? { targetId: target.id } : {}),
     });
   }
   return ranges;
 }
 
-export type DecoratedSegment = {
-  text: string;
-  source: AttributionSegment["source"];
-  link: "resolved" | "unresolved" | null;
-};
-
-/**
- * Split attribution segments at crosslink boundaries so the editor mirror can
- * style `[[...]]` spans without disturbing the raw text (and therefore the
- * character-for-character alignment with the transparent textarea). `ranges`
- * must be sorted and non-overlapping, as `findCrosslinkRanges` returns them.
- */
-export function decorateSegments(
-  segments: AttributionSegment[],
-  ranges: CrosslinkRange[],
-): DecoratedSegment[] {
-  if (ranges.length === 0) {
-    return segments.map((segment) => ({ ...segment, link: null }));
-  }
-
-  const boundaries = ranges
-    .flatMap((range) => [range.start, range.end])
-    .sort((a, b) => a - b);
-  const linkAt = (offset: number) => {
-    const range = ranges.find((r) => offset >= r.start && offset < r.end);
-    return range ? (range.resolved ? "resolved" : "unresolved") : null;
-  };
-
-  const pieces: DecoratedSegment[] = [];
-  let offset = 0;
-  for (const segment of segments) {
-    let local = 0;
-    while (local < segment.text.length) {
-      const absolute = offset + local;
-      // Cut at the next crosslink boundary inside this segment, if any.
-      const nextBoundary = boundaries.find((b) => b > absolute);
-      const sliceEnd = Math.min(
-        segment.text.length,
-        nextBoundary === undefined ? Infinity : nextBoundary - offset,
-      );
-      pieces.push({
-        text: segment.text.slice(local, sliceEnd),
-        source: segment.source,
-        link: linkAt(absolute),
-      });
-      local = sliceEnd;
-    }
-    offset += segment.text.length;
-  }
-  return pieces;
-}
