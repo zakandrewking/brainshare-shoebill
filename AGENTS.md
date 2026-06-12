@@ -3,6 +3,10 @@
 ## Working Agreement
 
 - Work autonomously from diagnosis through implementation and verification.
+- **Never wait.** When the user asks for a plan, deliver it and immediately
+  start executing it (after capturing it in `TODOS.md`). Do not pause between
+  planning and implementation for approval unless the user explicitly says to
+  hold. "Go" is always the default.
 - You are authorized to create focused commits and push them often. Do not ask
   for permission before committing or pushing coherent changes.
 - **Always push to `main` — never ask first.** When work is committed and
@@ -131,6 +135,24 @@ server in addition to any client-side messaging.
 - `pnpm typecheck`: TypeScript
 - `pnpm build`: production build
 - `pnpm verify`: full verification
+
+## Prod Data Access (agents)
+
+Agent sandboxes often allow only HTTPS egress, so the Mongo wire protocol
+(port 27017) is unreachable. Query prod data through the deployed API instead:
+
+- `SERVICE_API_TOKEN` (Vercel Production env var, never committed) is accepted
+  by every protected route as `Authorization: Bearer <token>`. It acts as the
+  primary allowlisted user — same scope, no superuser path.
+- Typed CRUD: `GET/POST /api/answers`, `PATCH/PUT/DELETE /api/answers/[id]`.
+- Ad-hoc read-only queries: `POST /api/admin/find` (service token only) with
+  `{ collection: "answers", filter: { field: scalar }, projection?, sort?,
+  limit? ≤ 200 }`; equality-only filters, `$` operators rejected, 24-hex `_id`
+  strings auto-convert.
+- Example:
+  `curl -s -H "Authorization: Bearer $SERVICE_API_TOKEN" https://www.brainshare.io/api/answers`
+- Keep the token out of URLs, logs, and commits. Rotate by replacing the env
+  var and redeploying.
 
 ## Implementation Rules
 

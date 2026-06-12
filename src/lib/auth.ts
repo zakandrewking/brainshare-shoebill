@@ -1,6 +1,7 @@
 import type { DecodedIdToken } from "firebase-admin/auth";
 
 import { adminAuth } from "@/lib/firebase/admin";
+import { isServiceToken } from "@/lib/service-token";
 
 export class AuthError extends Error {
   constructor(
@@ -11,6 +12,8 @@ export class AuthError extends Error {
   }
 }
 
+export type AuthorizedUser = Pick<DecodedIdToken, "uid" | "email">;
+
 export function getAllowedEmails() {
   return new Set(
     (process.env.ALLOWED_EMAILS ?? "zaking17@gmail.com")
@@ -20,14 +23,50 @@ export function getAllowedEmails() {
   );
 }
 
+function getBearerToken(request: Request) {
+  const authorization = request.headers.get("authorization");
+  return authorization?.match(/^Bearer (.+)$/i)?.[1];
+}
+
+let serviceUserPromise: Promise<AuthorizedUser> | undefined;
+
+// The service token always acts as the primary allowlisted account, so all
+// userId-scoped routes behave exactly as they do for that signed-in user.
+function getServiceUser() {
+  if (!serviceUserPromise) {
+    serviceUserPromise = lookupServiceUser();
+    serviceUserPromise.catch(() => {
+      serviceUserPromise = undefined;
+    });
+  }
+  return serviceUserPromise;
+}
+
+async function lookupServiceUser(): Promise<AuthorizedUser> {
+  const [email] = getAllowedEmails();
+  if (!email) {
+    throw new AuthError("No allowlisted email is configured.", 403);
+  }
+
+  try {
+    const record = await adminAuth.getUserByEmail(email);
+    return { uid: record.uid, email: record.email ?? email };
+  } catch {
+    throw new AuthError("The service identity could not be resolved.", 403);
+  }
+}
+
 export async function requireAuthorizedUser(
   request: Request,
-): Promise<DecodedIdToken> {
-  const authorization = request.headers.get("authorization");
-  const token = authorization?.match(/^Bearer (.+)$/i)?.[1];
+): Promise<AuthorizedUser> {
+  const token = getBearerToken(request);
 
   if (!token) {
     throw new AuthError("Sign in is required.");
+  }
+
+  if (isServiceToken(token)) {
+    return getServiceUser();
   }
 
   let decoded: DecodedIdToken;
@@ -43,4 +82,12 @@ export async function requireAuthorizedUser(
   }
 
   return decoded;
+}
+
+export async function requireServiceToken(request: Request): Promise<void> {
+  const token = getBearerToken(request);
+
+  if (!token || !isServiceToken(token)) {
+    throw new AuthError("A valid service token is required.");
+  }
 }
