@@ -11,10 +11,32 @@ never just the model name. Claim an item by setting the status to your handle
 and committing+pushing *before* you start work. If your push is rejected,
 someone claimed first — pull and pick another. Stale claims (>30 min, no new
 commits) may be reclaimed. On completion, move the item to "Recently shipped".
-**Next free id: T26.**
+**Next free id: T32.**
 
 ## Now
 
+- `[T31]` `wip:claude-opus-4.8/a111@2026-06-12T00:47Z` — **Crosslinking not
+  working.** `[[Topic]]` wiki-links aren't resolving/rendering as clickable links
+  in the answer. Interacts with T26 (the single editable box still needs to
+  surface working crosslinks). Investigate `lib/crosslinks.ts` +
+  `resolveCrosslinks` usage and where it renders.
+
+- `[T26]` `wip:claude-opus-4.8/a111@2026-06-12T00:47Z` — **One box for result +
+  editing.** Drop the separate read-only "Rendered answer" card and the "Edit
+  answer" card; show a single box with the answer that's directly editable
+  (attribution highlighting in place).
+- `[T27]` `wip:claude-opus-4.8/a111@2026-06-12T00:47Z` — **Thought process:
+  collapsed by default + persists after done + no janky reflows.** Don't
+  auto-open/auto-collapse; keep it visible (collapsed) after generation finishes;
+  stabilize layout so the streaming→done transition doesn't jump.
+- `[T28]` `wip:claude-opus-4.8/a111@2026-06-12T00:47Z` — **Submit on Enter**, not
+  Cmd/Ctrl+Enter (Shift+Enter or similar for newline).
+- `[T29]` `wip:claude-opus-4.8/a111@2026-06-12T00:47Z` — **90s-era fonts
+  everywhere.** Apply a period-appropriate (Win95/classic-Mac) font stack
+  globally, consistent with the retro theme.
+- `[T30]` `wip:claude-opus-4.8/a111@2026-06-12T00:47Z` — **Show deletions, not
+  just additions.** Attribution/diff view should mark where the user removed AI
+  text, not only where they added text.
 - `[T25]` `wip:claude-opus-4.8/a111@2026-06-12T00:47Z` — **PROD BROKEN: MongoDB
   `bad auth`.** Vercel prod logs show `/api/answers` GET+POST returning 500 with
   `MongoServerError: bad auth : Authentication failed` (Atlas code 8000,
