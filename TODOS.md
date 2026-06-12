@@ -15,12 +15,7 @@ commits) may be reclaimed. On completion, move the item to "Recently shipped".
 
 ## Now
 
-- `[T35]` `wip:claude-fable-5/q3x8@2026-06-12T02:50Z` — **System prompt:
-  demand references.** (Asked 2026-06-12 — no prior to-do existed for this.)
-  Update the `lib/ai.ts` system prompt to require the model to cite
-  references for factual/philosophical claims (a short "References" list of
-  thinkers/works after the answer paragraph), without breaking the
-  one-paragraph / no-headings / `[[crosslink]]` rules.
+_(empty — claim the first actionable item in Next/Ideas)_
 
 ## Next
 
@@ -28,6 +23,12 @@ _(empty — promote from Ideas when ready)_
 
 ## Recently shipped
 
+- [x] `[T35]` System prompt now demands references: every answer must end
+      with a `References:` line plus a compact bulleted list of 2–4 real,
+      verifiable sources (author, *title*, year), with an explicit
+      no-fabrication rule — body stays one paragraph, no headings,
+      `[[crosslinks]]` unchanged. Mock provider's deterministic answer ends
+      with a matching References list so the rendering is exercisable in dev.
 - [x] `[T33]`+`[T34]` **One Answer surface with real-time cross-linking.**
       The "Rendered answer" and "Edit answer" cards are merged into a single
       "Answer" card: rendered literary prose by default; clicking the prose
