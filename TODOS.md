@@ -11,11 +11,17 @@ never just the model name. Claim an item by setting the status to your handle
 and committing+pushing *before* you start work. If your push is rejected,
 someone claimed first — pull and pick another. Stale claims (>30 min, no new
 commits) may be reclaimed. On completion, move the item to "Recently shipped".
-**Next free id: T43.**
+**Next free id: T44.**
 
 ## Now
 
-_(empty — claim the first actionable item in Next/Ideas)_
+- `[T43]` `wip:claude-fable-5/q3x8@2026-06-12T04:12Z` — **Unresolved
+  `[[topics]]` should start a new entry.** ⌘/Ctrl-click on a `[[topic]]` with
+  no matching entry opens the new-question input prefilled with a suggested
+  question for that topic ("What is X?") and focuses it — so the related-
+  suggestions dropdown immediately shows near-matches before generating.
+  Style unresolved links as actionable (dashed underline + title hint)
+  instead of just muted.
 
 ## Next
 
