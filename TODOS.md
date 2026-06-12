@@ -17,7 +17,12 @@ confirmation" (shipped + verified, pending the user's check, with a one-line
 
 ## Now
 
-_(empty — claim the first actionable item in Next/Ideas)_
+- `[T43]` `wip:claude-fable-5/q3x8@2026-06-12T05:12Z` — **(back from
+  Awaiting: user says it must work on mobile.)** Tapping a `[[topic]]`
+  decoration in the editor text on a touch device should navigate (resolved)
+  or start the suggested question (unresolved) — Obsidian-style: a clean tap
+  follows the link, scroll/drag/long-press still edit. Today only the chip
+  row works on mobile; in-text taps just place the cursor.
 
 ## Next
 - `[T50]` `unclaimed` — **Dark-mode + mobile visual review of the CodeMirror
@@ -47,15 +52,8 @@ item to Recently shipped; a problem report moves it back to Now.)_
   lifecycle is now wip → Awaiting confirmation → Recently shipped (on your
   confirmation). CHECK: this section reads right to you.
 
-- `[T43]` Unresolved `[[topics]]` seed new entries: ⌘/Ctrl-click a dashed
-  `[[topic]]` (desktop) or tap it in the "Links" chip row (mobile) → fresh
-  workspace, ask box prefilled "What is X?" and focused, suggestions shown.
-  CHECK: open the bat entry, ⌘-click `[[subjective experience]]` (or tap its
-  chip) — the ask box should fill and focus without losing other state.
 - `[T44]` Suggestion clicks keep the typed draft. CHECK: type a few words,
   click a dropdown suggestion — the entry opens below, input text unchanged.
-- `[T45]` Clear-input ✕ button in the question box. CHECK: type, press ✕ —
-  input empties, focus stays.
 - `[T46]` One loading indicator while generating (header spinner only; all
   labels static). CHECK: generate — exactly one spinner, no "…" anywhere.
 - `[T47]` No serif→monospace font jump when generation finishes. CHECK: the
@@ -73,6 +71,9 @@ item to Recently shipped; a problem report moves it back to Now.)_
   format to academia style).
 
 ## Recently shipped
+
+- [x] `[T45]` Clear-input ✕ button — **user-confirmed 2026-06-12** ("Clear
+      button is good").
 - [x] `[T42]` Related row ranks doc-to-doc: `/api/related` accepts `answerId`
       and uses that answer's stored question+text vector as the query (its
       question for the keyword half); the workspace sends `answerId` for the
