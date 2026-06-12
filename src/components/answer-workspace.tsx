@@ -10,15 +10,13 @@ import {
   LogOutIcon,
   PlusIcon,
   RefreshCwIcon,
-  SaveIcon,
   SearchIcon,
   SendIcon,
   Trash2Icon,
 } from "lucide-react";
 import { toast } from "sonner";
-import { Streamdown } from "streamdown";
 
-import { HighlightedEditor } from "@/components/highlighted-editor";
+import { MarkdownEditor } from "@/components/markdown-editor";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -39,7 +37,6 @@ import {
 } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
 import { attributeText, attributionCounts } from "@/lib/attribution";
-import { resolveCrosslinks } from "@/lib/crosslinks";
 import { findRelatedQuestions } from "@/lib/related";
 import { getFirebaseAuth } from "@/lib/firebase/client";
 import type { SerializedAnswer } from "@/lib/types";
@@ -80,7 +77,6 @@ export function AnswerWorkspace({ user }: { user: User }) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [isSaved, setIsSaved] = useState(true);
   const [submissions, setSubmissions] = useState<SerializedAnswer[]>([]);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [questionFocused, setQuestionFocused] = useState(false);
@@ -100,17 +96,29 @@ export function AnswerWorkspace({ user }: { user: User }) {
     () => (answer ? attributeText(answer.aiText, currentText) : []),
     [answer, currentText],
   );
-  // Resolve [[Topic]] wiki-links against other submissions for the rendered
-  // view only; the editor keeps the raw text so edits stay authorable.
-  const renderedText = useMemo(
-    () => resolveCrosslinks(currentText, submissions, { excludeId: answer?.id }),
-    [currentText, submissions, answer?.id],
-  );
   const counts = useMemo(() => attributionCounts(segments), [segments]);
   const userPercent =
     counts.ai + counts.user
       ? Math.round((counts.user / (counts.ai + counts.user)) * 100)
       : 0;
+
+  // One result surface drives both states: the live editor shows the answer as
+  // it streams (read-only) and stays mounted as the editable, attributed doc
+  // once saved — so there's no card swap / reflow between the two.
+  const streaming = isGenerating || isRegenerating;
+  const liveText = streaming ? streamingText : currentText;
+  const canEdit = Boolean(answer) && !streaming;
+  const showResult = streaming || Boolean(answer);
+  const showPulse = streaming && !streamingText;
+  const statusTitle = streaming
+    ? streamingText
+      ? isRegenerating
+        ? "Regenerating"
+        : "Writing"
+      : "Thinking…"
+    : "Answer";
+  const isDirty =
+    answer != null && !streaming && currentText !== answer.currentText;
 
   const loadSubmissions = useCallback(async () => {
     try {
@@ -135,7 +143,9 @@ export function AnswerWorkspace({ user }: { user: User }) {
     setCurrentText(submission?.currentText ?? "");
     setQuestion(submission?.question ?? "");
     setStreamingText("");
-    setIsSaved(true);
+    // Reasoning is per-generation and never persisted — clear it when opening a
+    // different submission so stale "thinking" doesn't bleed across answers.
+    setStreamingReasoning("");
   }, []);
 
   // Read `?a=<id>` and open the matching submission (or reset to a blank
@@ -315,7 +325,6 @@ export function AnswerWorkspace({ user }: { user: User }) {
       setAnswer(body.answer);
       setCurrentText(body.answer.currentText);
       setStreamingText("");
-      setIsSaved(true);
       pushAnswerUrl(body.answer.id);
       void loadSubmissions();
     } catch (error) {
@@ -365,7 +374,6 @@ export function AnswerWorkspace({ user }: { user: User }) {
       setAnswer(body.answer);
       setCurrentText(body.answer.currentText);
       setStreamingText("");
-      setIsSaved(true);
       toast.success("Answer regenerated.");
       void loadSubmissions();
     } catch (error) {
@@ -378,8 +386,13 @@ export function AnswerWorkspace({ user }: { user: User }) {
     }
   }
 
-  async function save() {
-    if (!answer) return;
+  // Persist the current edits. Does NOT overwrite the live text (the user may
+  // have kept typing while the request was in flight); the autosave effect
+  // reconciles `isSaved` from the returned baseline.
+  const savingRef = useRef(false);
+  async function persistCurrentText() {
+    if (!answer || savingRef.current) return;
+    savingRef.current = true;
     setIsSaving(true);
 
     try {
@@ -400,17 +413,34 @@ export function AnswerWorkspace({ user }: { user: User }) {
         answer: SerializedAnswer;
       };
       setAnswer(body.answer);
-      setCurrentText(body.answer.currentText);
-      setIsSaved(true);
-      toast.success("Answer saved.");
-      void loadSubmissions();
+      setSubmissions((previous) =>
+        previous.map((item) => (item.id === body.answer.id ? body.answer : item)),
+      );
+      submissionsRef.current = submissionsRef.current.map((item) =>
+        item.id === body.answer.id ? body.answer : item,
+      );
     } catch (error) {
       console.error(error);
       toast.error(error instanceof Error ? error.message : "Save failed.");
     } finally {
+      savingRef.current = false;
       setIsSaving(false);
     }
   }
+
+  // Autosave as you type: once edits settle (and we're not mid-generation),
+  // debounce a PATCH. The "saved/unsaved/saving" status is derived during
+  // render (see `isDirty` below), so this effect only schedules the write.
+  useEffect(() => {
+    if (!answer || isGenerating || isRegenerating) return;
+    if (currentText === answer.currentText) return;
+    const handle = setTimeout(() => {
+      void persistCurrentText();
+    }, 700);
+    return () => clearTimeout(handle);
+    // persistCurrentText is recreated each render with the latest currentText.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentText, answer, isGenerating, isRegenerating]);
 
   return (
     <main className="min-h-screen bg-background">
@@ -596,157 +626,121 @@ export function AnswerWorkspace({ user }: { user: User }) {
           </CardContent>
         </Card>
 
-        {isGenerating || isRegenerating ? (
-          <Card>
-            <CardHeader>
-              <div className="flex items-center gap-2">
-                <LoaderCircleIcon className="size-4 animate-spin" />
-                <CardTitle>
-                  {streamingText
-                    ? isRegenerating
-                      ? "Regenerating"
-                      : "Writing"
-                    : "Thinking…"}
-                </CardTitle>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {/* The single "thinking" affordance: the model's live reasoning.
-                  Open while it's still thinking; collapses to a disclosure once
-                  the prose starts so the answer takes focus. The header above is
-                  the only status label, so this panel reads as the content
-                  ("Thought process"), not a second "Thinking" indicator. */}
-              {streamingReasoning ? (
-                <details
-                  open={!streamingText}
-                  className="retro-sunken p-3 text-sm"
-                >
-                  <summary className="cursor-pointer font-medium text-muted-foreground">
-                    Thought process
-                  </summary>
-                  <div className="mt-2 max-h-64 overflow-y-auto whitespace-pre-wrap text-muted-foreground italic">
-                    {streamingReasoning}
-                  </div>
-                </details>
-              ) : null}
-              {streamingText ? (
-                <div className="retro-sunken literary-prose min-h-40 p-5">
-                  <Streamdown
-                    isAnimating
-                    animated={{
-                      animation: "fadeIn",
-                      sep: "word",
-                      duration: 450,
-                    }}
-                  >
-                    {streamingText}
-                  </Streamdown>
-                </div>
-              ) : streamingReasoning ? null : (
-                // Pre-reasoning gap (high effort can stall here): a quiet pulse,
-                // not a second "Thinking…" label — the header already says it.
-                <div className="retro-sunken flex min-h-40 items-center justify-center gap-2 p-5 text-muted-foreground">
-                  <span className="size-2 animate-bounce bg-current [animation-delay:-0.3s]" />
-                  <span className="size-2 animate-bounce bg-current [animation-delay:-0.15s]" />
-                  <span className="size-2 animate-bounce bg-current" />
-                  <span className="sr-only">Thinking…</span>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        ) : null}
-
-        {answer ? (
+        {showResult ? (
           <div className="space-y-6">
             <Card>
               <CardHeader>
                 <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div>
-                    <CardTitle>Rendered answer</CardTitle>
+                  <div className="flex items-center gap-2">
+                    {streaming ? (
+                      <LoaderCircleIcon className="size-4 animate-spin" />
+                    ) : null}
+                    <CardTitle>{statusTitle}</CardTitle>
                   </div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Badge variant="outline">
-                      {answer.provider} / {answer.model}
-                    </Badge>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={regenerate}
-                      disabled={isGenerating || isRegenerating}
-                    >
-                      {isRegenerating ? (
-                        <LoaderCircleIcon className="animate-spin" />
-                      ) : (
-                        <RefreshCwIcon />
-                      )}
-                      {isRegenerating ? "Regenerating..." : "Regenerate"}
-                    </Button>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="retro-sunken literary-prose min-h-32 p-5">
-                  <Streamdown mode="static">{renderedText}</Streamdown>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <CardTitle>Edit answer</CardTitle>
                   <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                    <Badge variant="secondary">AI: {counts.ai} chars</Badge>
-                    <Badge className="bg-sky-500/12 text-sky-700 dark:text-sky-300">
-                      You: {counts.user} chars
-                    </Badge>
-                    <span>{userPercent}% edited</span>
-                    <span className="flex items-center gap-1">
-                      {isSaved ? (
-                        <>
-                          <CheckIcon className="size-3.5" />
-                          Saved
-                        </>
-                      ) : (
-                        "Unsaved"
-                      )}
-                    </span>
+                    {answer ? (
+                      <Badge variant="outline">
+                        {answer.provider} / {answer.model}
+                      </Badge>
+                    ) : null}
+                    {canEdit ? (
+                      <>
+                        <Badge variant="secondary">AI: {counts.ai} chars</Badge>
+                        <Badge className="bg-sky-500/12 text-sky-700 dark:text-sky-300">
+                          You: {counts.user} chars
+                        </Badge>
+                        <span>{userPercent}% edited</span>
+                        <span className="flex items-center gap-1">
+                          {isSaving ? (
+                            <>
+                              <LoaderCircleIcon className="size-3.5 animate-spin" />
+                              Saving…
+                            </>
+                          ) : isDirty ? (
+                            "Unsaved"
+                          ) : (
+                            <>
+                              <CheckIcon className="size-3.5" />
+                              Saved
+                            </>
+                          )}
+                        </span>
+                      </>
+                    ) : null}
+                    {answer ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={regenerate}
+                        disabled={streaming}
+                      >
+                        {isRegenerating ? (
+                          <LoaderCircleIcon className="animate-spin" />
+                        ) : (
+                          <RefreshCwIcon />
+                        )}
+                        {isRegenerating ? "Regenerating..." : "Regenerate"}
+                      </Button>
+                    ) : null}
                   </div>
                 </div>
               </CardHeader>
               <CardContent className="space-y-3">
-                <HighlightedEditor
-                  value={currentText}
-                  segments={segments}
-                  onChange={(next) => {
-                    setCurrentText(next);
-                    setIsSaved(false);
-                  }}
-                />
-                <div className="flex items-center justify-between gap-3">
+                {/* One thinking affordance: the live reasoning, collapsed by
+                    default and kept after generation finishes — it doesn't
+                    vanish or auto-toggle, so the layout never jumps. */}
+                {streamingReasoning ? (
+                  <details className="retro-sunken p-3 text-sm">
+                    <summary className="cursor-pointer font-medium text-muted-foreground">
+                      Thought process
+                    </summary>
+                    <div className="mt-2 max-h-64 overflow-y-auto whitespace-pre-wrap text-muted-foreground italic">
+                      {streamingReasoning}
+                    </div>
+                  </details>
+                ) : null}
+                {showPulse ? (
+                  // Pre-text gap (high effort can stall here): a quiet pulse —
+                  // the header already says "Thinking…".
+                  <div className="retro-sunken flex min-h-72 items-center justify-center gap-2 p-5 text-muted-foreground">
+                    <span className="size-2 animate-bounce bg-current [animation-delay:-0.3s]" />
+                    <span className="size-2 animate-bounce bg-current [animation-delay:-0.15s]" />
+                    <span className="size-2 animate-bounce bg-current" />
+                    <span className="sr-only">Thinking…</span>
+                  </div>
+                ) : (
+                  <MarkdownEditor
+                    className="retro-sunken min-h-72 overflow-hidden"
+                    value={liveText}
+                    aiText={answer?.aiText ?? ""}
+                    editable={canEdit}
+                    submissions={submissions}
+                    excludeId={answer?.id}
+                    placeholder="Your answer will appear here…"
+                    onChange={(next) => setCurrentText(next)}
+                    onOpenCrosslink={(id) => {
+                      const match = submissions.find((item) => item.id === id);
+                      if (match) openSubmission(match);
+                    }}
+                  />
+                )}
+                {canEdit ? (
                   <p className="text-xs text-muted-foreground">
-                    Highlighted text is yours; the rest is the AI baseline.
+                    Highlighted text is yours; struck-through marks show where you
+                    cut the AI baseline. Edits autosave.
                   </p>
-                  <Button
-                    variant="secondary"
-                    onClick={save}
-                    disabled={isSaved || isSaving}
-                  >
-                    {isSaving ? (
-                      <LoaderCircleIcon className="animate-spin" />
-                    ) : (
-                      <SaveIcon />
-                    )}
-                    {isSaving ? "Saving..." : "Save changes"}
-                  </Button>
-                </div>
+                ) : null}
               </CardContent>
             </Card>
-            <Separator />
-            <p className="text-center text-xs text-muted-foreground">
-              Generated {new Date(answer.createdAt).toLocaleString()} · Last
-              saved {new Date(answer.updatedAt).toLocaleString()}
-            </p>
+            {answer && !streaming ? (
+              <>
+                <Separator />
+                <p className="text-center text-xs text-muted-foreground">
+                  Generated {new Date(answer.createdAt).toLocaleString()} · Last
+                  saved {new Date(answer.updatedAt).toLocaleString()}
+                </p>
+              </>
+            ) : null}
           </div>
         ) : null}
       </div>

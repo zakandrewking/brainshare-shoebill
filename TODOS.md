@@ -30,10 +30,16 @@ commits) may be reclaimed. On completion, move the item to "Recently shipped".
   surface working crosslinks). Investigate `lib/crosslinks.ts` +
   `resolveCrosslinks` usage and where it renders.
 
-- `[T26]` `wip:claude-opus-4.8/a111@2026-06-12T00:47Z` — **One box for result +
-  editing.** Drop the separate read-only "Rendered answer" card and the "Edit
-  answer" card; show a single box with the answer that's directly editable
-  (attribution highlighting in place).
+- `[T26]` `wip:claude-opus-4.8/a111@2026-06-12T00:47Z` — **One box, live-rendered
+  + always editable (Bear/Obsidian-style).** DECISION (user): take as much
+  inspiration as possible from Bear/Obsidian live markdown editors — always
+  editable, live rendered, no read/edit mode toggle. Plan: CodeMirror 6 (what
+  Obsidian uses; plain-text doc model fits our raw-markdown diff attribution +
+  raw-markdown persistence). Single card replaces the "Rendered answer" + "Edit
+  answer" cards; CM6 styles markdown live (headings/bold/italic/links/quote/code)
+  and hosts decorations for attribution (T30), clickable crosslinks (T31), and
+  autosave (T32). Folds in T27 (thought-process) layout. NOTE: signed-in UI isn't
+  headlessly verifiable + prod Mongo down (T25), so feel needs user sanity-check.
 - `[T27]` `wip:claude-opus-4.8/a111@2026-06-12T00:47Z` — **Thought process:
   collapsed by default + persists after done + no janky reflows.** Don't
   auto-open/auto-collapse; keep it visible (collapsed) after generation finishes;

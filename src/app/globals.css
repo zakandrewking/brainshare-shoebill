@@ -259,3 +259,40 @@
   font-family: var(--font-mono);
   letter-spacing: 0;
 }
+
+/* ───────────────────────────────────────────────────────────────────────────
+   Live markdown editor (CodeMirror 6) decorations: attribution highlight for
+   the user's additions, a struck ghost where baseline text was deleted, and
+   clickable crosslinks. Styled here since decoration classes live on plain DOM
+   inside the editor, not through the CM theme. */
+.cm-user-edit {
+  background-color: rgb(14 165 233 / 0.15);
+  color: rgb(7 89 153);
+  border-radius: 2px;
+}
+.dark .cm-user-edit {
+  color: rgb(186 230 253);
+}
+.cm-deletion {
+  margin: 0 0.15em;
+  padding: 0 0.1em;
+  font-size: 0.82em;
+  color: rgb(220 38 38);
+  text-decoration: line-through;
+  opacity: 0.75;
+  user-select: none;
+  vertical-align: baseline;
+}
+.dark .cm-deletion {
+  color: rgb(248 113 113);
+}
+.cm-crosslink {
+  color: var(--primary);
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.cm-crosslink:hover {
+  text-decoration-style: solid;
+}
