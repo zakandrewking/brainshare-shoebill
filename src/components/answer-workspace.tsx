@@ -481,7 +481,7 @@ export function AnswerWorkspace({ user }: { user: User }) {
       <div className="mx-auto w-full max-w-6xl space-y-6 px-5 py-8 sm:px-6 sm:py-12">
         <Card>
           <CardContent className="space-y-3">
-            <Label htmlFor="question">What do you want to know?</Label>
+            <Label htmlFor="question">What truth do you seek?</Label>
             <div className="relative">
               <Textarea
                 id="question"
@@ -490,7 +490,7 @@ export function AnswerWorkspace({ user }: { user: User }) {
                 onFocus={() => setQuestionFocused(true)}
                 // Delay so a click on a suggestion lands before it unmounts.
                 onBlur={() => setTimeout(() => setQuestionFocused(false), 120)}
-                placeholder="For example: What makes a strong product strategy?"
+                placeholder="For example: Does the universe have meaning, or do we give it one?"
                 className="min-h-28 resize-y text-base"
                 disabled={isGenerating}
                 onKeyDown={(event) => {

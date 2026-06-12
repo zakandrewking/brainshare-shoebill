@@ -15,11 +15,6 @@ commits) may be reclaimed. On completion, move the item to "Recently shipped".
 
 ## Now
 
-- `[T20]` `wip:claude-opus-4.8/f3yl@2026-06-12T00:06Z` — **Philosophy/truth-seeking
-  vibe.** Reframe the default question-area copy (label + placeholder) and the
-  system prompt (`lib/ai.ts`) around philosophy and seeking truths about the
-  universe, instead of the current generic/product framing.
-
 - `[T14]` `wip:claude-opus-4.8/ae44@2026-06-11T15:28Z` (taken over from 9yf1, user-directed) — **Prod GitHub login is
   still broken.** CODE DONE (pushed): auth-gate now (a) surfaces the real
   Firebase error code instead of a generic message, (b) falls back from
@@ -42,6 +37,13 @@ commits) may be reclaimed. On completion, move the item to "Recently shipped".
 
 ## Recently shipped
 
+- [x] `[T20]` Philosophy / truth-seeking vibe. System prompt (`lib/ai.ts`)
+      reframed as a "contemplative companion in the search for truth about the
+      universe" — first-principles reasoning, fair weighing of views, honest
+      uncertainty — while keeping the one-paragraph / no-headings / `[[concept]]`
+      crosslink rules. Question area copy: label "What truth do you seek?",
+      placeholder "Does the universe have meaning, or do we give it one?". Build
+      + lint + tests green.
 - [x] `[T15]` Splash logo + "Brainshare" title now centered (CardHeader
       `justify-items-center text-center`). Verified live at mobile (390px, 2x)
       and desktop widths via agent-browser screenshots.
