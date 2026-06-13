@@ -34,6 +34,14 @@ import {
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   Sheet,
   SheetContent,
   SheetDescription,
@@ -50,6 +58,7 @@ import {
 } from "@/lib/crosslinks";
 import { extractUserPassages, weaveUserText } from "@/lib/reinject";
 import { findRelatedQuestions } from "@/lib/related";
+import { cn } from "@/lib/utils";
 import { getFirebaseAuth } from "@/lib/firebase/client";
 import type { SerializedAnswer } from "@/lib/types";
 
@@ -124,6 +133,8 @@ export function AnswerWorkspace({ user }: { user: User }) {
   // Revert history for the open answer; null until fetched.
   const [historyOpen, setHistoryOpen] = useState(false);
   const [versions, setVersions] = useState<AnswerVersionRow[] | null>(null);
+  // Which stored version is being previewed in the history modal (its `index`).
+  const [previewIndex, setPreviewIndex] = useState<number | null>(null);
   const [isRestoring, setIsRestoring] = useState(false);
   const [submissions, setSubmissions] = useState<SerializedAnswer[]>([]);
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -308,6 +319,9 @@ export function AnswerWorkspace({ user }: { user: User }) {
     return () => clearTimeout(timer);
   }, [crosslinkRanges, answer?.id, user]);
   const counts = useMemo(() => attributionCounts(segments), [segments]);
+  // The version currently being previewed in the history modal.
+  const previewVersion =
+    versions?.find((version) => version.index === previewIndex) ?? null;
   const userPercent =
     counts.ai + counts.user
       ? Math.round((counts.user / (counts.ai + counts.user)) * 100)
@@ -350,6 +364,7 @@ export function AnswerWorkspace({ user }: { user: User }) {
       setAnswerRelated([]);
       setHistoryOpen(false);
       setVersions(null);
+      setPreviewIndex(null);
       setIsSaved(true);
     },
     [],
@@ -419,20 +434,22 @@ export function AnswerWorkspace({ user }: { user: User }) {
         versions: AnswerVersionRow[];
       };
       setVersions(body.versions);
+      // Preview the newest version by default so opening the modal shows
+      // something to read immediately.
+      const newest = body.versions[body.versions.length - 1];
+      setPreviewIndex(newest ? newest.index : null);
     } catch (error) {
       console.error(error);
       toast.error(describeActionError(error, "loading the history"));
     }
   }
 
-  function toggleHistory() {
+  function openHistory() {
     if (!answer) return;
-    const opening = !historyOpen;
-    setHistoryOpen(opening);
-    if (opening) {
-      setVersions(null);
-      void loadVersions(answer.id);
-    }
+    setHistoryOpen(true);
+    setVersions(null);
+    setPreviewIndex(null);
+    void loadVersions(answer.id);
   }
 
   async function restoreVersion(index: number) {
@@ -462,8 +479,7 @@ export function AnswerWorkspace({ user }: { user: User }) {
         return next;
       });
       toast.success("Earlier version restored.");
-      // Indices shift after the restore snapshot; refresh the list.
-      void loadVersions(body.answer.id);
+      setHistoryOpen(false);
     } catch (error) {
       console.error(error);
       toast.error(describeActionError(error, "restoring the version"));
@@ -1039,8 +1055,7 @@ export function AnswerWorkspace({ user }: { user: User }) {
                     <Button
                       variant="outline"
                       size="sm"
-                      aria-pressed={historyOpen}
-                      onClick={toggleHistory}
+                      onClick={openHistory}
                       disabled={isRegenerating}
                     >
                       <HistoryIcon />
@@ -1050,49 +1065,6 @@ export function AnswerWorkspace({ user }: { user: User }) {
                 </div>
               </CardHeader>
               <CardContent className="space-y-3">
-                {historyOpen ? (
-                  <div className="retro-sunken space-y-2 p-3 text-sm">
-                    <p className="text-xs font-medium text-muted-foreground">
-                      History — restoring swaps a version back in (the current
-                      state is kept as a new version)
-                    </p>
-                    {versions === null ? (
-                      <p className="text-xs text-muted-foreground">
-                        Loading versions
-                      </p>
-                    ) : versions.length === 0 ? (
-                      <p className="text-xs text-muted-foreground">
-                        No earlier versions yet — they appear after edits,
-                        regenerations, and restores.
-                      </p>
-                    ) : (
-                      [...versions].reverse().map((version) => (
-                        <div
-                          key={version.index}
-                          className="flex items-center justify-between gap-3"
-                        >
-                          <div className="min-w-0 flex-1">
-                            <p className="line-clamp-1">
-                              {version.currentText}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              {VERSION_KIND_LABELS[version.kind]} ·{" "}
-                              {new Date(version.capturedAt).toLocaleString()}
-                            </p>
-                          </div>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            disabled={isRestoring}
-                            onClick={() => restoreVersion(version.index)}
-                          >
-                            Restore
-                          </Button>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                ) : null}
                 {streamingReasoning && !isGenerating && !isRegenerating ? (
                   <details className="retro-sunken p-3 text-sm">
                     <summary className="cursor-pointer font-medium text-muted-foreground">
@@ -1236,6 +1208,100 @@ export function AnswerWorkspace({ user }: { user: User }) {
                 </div>
               </CardContent>
             </Card>
+            <Dialog
+              open={historyOpen}
+              onOpenChange={(open) => {
+                setHistoryOpen(open);
+                if (!open) {
+                  setPreviewIndex(null);
+                }
+              }}
+            >
+              <DialogContent className="max-w-3xl sm:h-[80dvh]">
+                <DialogHeader>
+                  <DialogTitle>Version history</DialogTitle>
+                  <DialogDescription>
+                    Preview any saved version, then restore it. Restoring swaps
+                    it in and keeps your current text as a new version, so it
+                    stays reversible.
+                  </DialogDescription>
+                </DialogHeader>
+                {versions === null ? (
+                  <p className="text-sm text-muted-foreground">
+                    Loading versions…
+                  </p>
+                ) : versions.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    No earlier versions yet — they appear after edits,
+                    regenerations, and restores.
+                  </p>
+                ) : (
+                  <div className="flex min-h-0 flex-1 flex-col gap-3 sm:flex-row">
+                    <ul className="retro-sunken flex max-h-36 shrink-0 flex-col overflow-y-auto p-1 sm:max-h-none sm:w-56">
+                      {[...versions].reverse().map((version) => {
+                        const active = version.index === previewIndex;
+                        return (
+                          <li key={version.index}>
+                            <button
+                              type="button"
+                              onClick={() => setPreviewIndex(version.index)}
+                              aria-current={active}
+                              className={cn(
+                                "w-full px-2 py-1.5 text-left",
+                                active
+                                  ? "bg-primary/15 text-foreground"
+                                  : "text-muted-foreground hover:bg-foreground/5",
+                              )}
+                            >
+                              <span className="block text-sm font-medium">
+                                {VERSION_KIND_LABELS[version.kind]}
+                              </span>
+                              <span className="block text-xs opacity-80">
+                                {new Date(
+                                  version.capturedAt,
+                                ).toLocaleString()}
+                              </span>
+                              <span className="mt-0.5 block truncate text-xs opacity-70">
+                                {version.currentText}
+                              </span>
+                            </button>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                    <div className="retro-sunken literary-prose min-h-0 flex-1 overflow-y-auto p-4">
+                      {previewVersion ? (
+                        <Streamdown>{previewVersion.currentText}</Streamdown>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">
+                          Select a version to preview it.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+                <DialogFooter>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setHistoryOpen(false)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    size="sm"
+                    disabled={isRestoring || previewVersion === null}
+                    onClick={() => {
+                      if (previewVersion) {
+                        void restoreVersion(previewVersion.index);
+                      }
+                    }}
+                  >
+                    {isRestoring ? "Restoring" : "Restore this version"}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
             <Separator />
             <p className="text-center text-xs text-muted-foreground">
               Generated {new Date(answer.createdAt).toLocaleString()} · Last

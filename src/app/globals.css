@@ -171,6 +171,7 @@
 /* Raised chrome: windows (cards), the slide-out sheet, popovers/menus. */
 [data-slot="card"],
 [data-slot="sheet-content"],
+[data-slot="dialog-content"],
 [data-slot="dropdown-menu-content"] {
   border: 0;
   border-radius: 0;
