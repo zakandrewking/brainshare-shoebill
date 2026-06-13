@@ -13,11 +13,17 @@ someone claimed first — pull and pick another. Stale claims (>30 min, no new
 commits) may be reclaimed. On completion, move the item to "Awaiting
 confirmation" (shipped + verified, pending the user's check, with a one-line
 "how to check"); only the user's confirmation moves it to "Recently shipped".
-**Next free id: T57.**
+**Next free id: T58.**
 
 ## Now
 
-_(empty — claim the first actionable item in Next/Ideas)_
+- `[T57]` `wip:claude-opus-4.8/pf4j@2026-06-13T16:46Z` — **Version history as a
+  previewable modal.** Replace the inline History panel on the answer card with
+  a centered modal listing ALL stored versions (newest-first: kind, timestamp,
+  one-line preview). Selecting a version shows its full rendered text in a
+  preview pane so the user can read it before committing; a "Restore this
+  version" action swaps it in and closes the modal. Needs a new `ui/dialog.tsx`
+  (Base UI Dialog, retro-styled like the sheet).
 
 ## Next
 - `[T50]` `unclaimed` — **Dark-mode + mobile visual review of the CodeMirror
