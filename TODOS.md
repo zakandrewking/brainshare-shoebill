@@ -13,11 +13,17 @@ someone claimed first — pull and pick another. Stale claims (>30 min, no new
 commits) may be reclaimed. On completion, move the item to "Awaiting
 confirmation" (shipped + verified, pending the user's check, with a one-line
 "how to check"); only the user's confirmation moves it to "Recently shipped".
-**Next free id: T59.**
+**Next free id: T61.**
 
 ## Now
 
-_(in progress — see Awaiting confirmation)_
+- `[T59]` `wip:claude-opus-4.8/pf4j@2026-06-13T17:40Z` — **Better mobile
+  horizontal-space usage.** The workspace feels cramped/narrow on a phone; tighten
+  page padding and let content use the full width on small screens.
+- `[T60]` `wip:claude-opus-4.8/pf4j@2026-06-13T17:40Z` — **Editor render glitches
+  while typing.** The blue (user-attribution) tint doesn't apply consistently and
+  the editor scrolls up and down as you type. Likely the CodeMirror attribution
+  decorations recomputing/replacing on every keystroke + scroll-into-view churn.
 
 ## Next
 - `[T50]` `unclaimed` — **Dark-mode + mobile visual review of the CodeMirror
