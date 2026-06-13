@@ -17,13 +17,7 @@ confirmation" (shipped + verified, pending the user's check, with a one-line
 
 ## Now
 
-- `[T59]` `wip:claude-opus-4.8/pf4j@2026-06-13T17:40Z` — **Better mobile
-  horizontal-space usage.** The workspace feels cramped/narrow on a phone; tighten
-  page padding and let content use the full width on small screens.
-- `[T60]` `wip:claude-opus-4.8/pf4j@2026-06-13T17:40Z` — **Editor render glitches
-  while typing.** The blue (user-attribution) tint doesn't apply consistently and
-  the editor scrolls up and down as you type. Likely the CodeMirror attribution
-  decorations recomputing/replacing on every keystroke + scroll-into-view churn.
+_(in progress — see Awaiting confirmation)_
 
 ## Next
 - `[T50]` `unclaimed` — **Dark-mode + mobile visual review of the CodeMirror
@@ -37,6 +31,15 @@ confirmation" (shipped + verified, pending the user's check, with a one-line
 _(Shipped + verified + deployed; pending the user's check. Confirming moves an
 item to Recently shipped; a problem report moves it back to Now.)_
 
+- `[T60]` Editor render glitches fixed — attribution decorations now compute
+  inside CodeMirror from the live doc (atomic with each keystroke) instead of
+  via a second React dispatch, so the blue tint no longer flickers and the
+  scroll no longer jumps. CHECK on your phone: type into an answer — your text
+  tints blue immediately and stays put, no scroll bouncing.
+- `[T59]` Better mobile horizontal-space usage — page/editor/card padding
+  trimmed below the `sm` breakpoint (px-3, 1rem editor inset, 0.75rem card
+  inset) so text fills more of a narrow screen; desktop unchanged. CHECK on
+  your phone: the answer text should reach closer to both edges.
 - `[T58]` Background AI generations — generations now run server-side via
   `after()` and survive page close. Submissions list shows a spinner + cancel
   button while generating; reopening/reloading auto-resumes the poll loop.
