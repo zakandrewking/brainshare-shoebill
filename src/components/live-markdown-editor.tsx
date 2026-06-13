@@ -13,28 +13,40 @@ import {
 } from "@codemirror/view";
 import { tags } from "@lezer/highlight";
 
-import type { AttributionSegment } from "@/lib/attribution";
+import { attributeText, type AttributionSegment } from "@/lib/attribution";
 import type { CrosslinkRange } from "@/lib/crosslinks";
 import { cn } from "@/lib/utils";
 
 // The answer is edited as markdown in one always-live surface: CodeMirror
 // styles the markdown as you type, while attribution (user-authored ranges)
-// and [[crosslink]] resolution are overlaid as decorations that follow edits.
+// and [[crosslink]] resolution are overlaid as decorations.
+//
+// Attribution is recomputed *inside* the editor from the live document on
+// every change (see decorationsField), so the blue user-text tint updates
+// atomically in the same transaction as the keystroke. Computing it in React
+// and pushing it via a second dispatch caused a one-frame flicker (the marks
+// were first mapped, then replaced) which, with the tint's box-shadow,
+// reflowed line heights and jumped the scroll position.
 
-const setMarks = StateEffect.define<DecorationSet>();
+// The editor's decoration inputs that live in React: the AI baseline (for the
+// attribution diff) and the resolved [[crosslink]] ranges.
+type DecorationConfig = {
+  aiText: string;
+  crosslinks: CrosslinkRange[];
+};
 
-const marksField = StateField.define<DecorationSet>({
-  create: () => Decoration.none,
-  update(marks, transaction) {
-    let next = marks.map(transaction.changes);
+const setConfig = StateEffect.define<DecorationConfig>();
+
+const configField = StateField.define<DecorationConfig>({
+  create: () => ({ aiText: "", crosslinks: [] }),
+  update(value, transaction) {
     for (const effect of transaction.effects) {
-      if (effect.is(setMarks)) {
-        next = effect.value;
+      if (effect.is(setConfig)) {
+        return effect.value;
       }
     }
-    return next;
+    return value;
   },
-  provide: (field) => EditorView.decorations.from(field),
 });
 
 const userMark = Decoration.mark({ class: "cm-user-text" });
@@ -75,6 +87,33 @@ function buildMarks(
   return Decoration.set(ranges, true);
 }
 
+function computeMarks(state: EditorState): DecorationSet {
+  const config = state.field(configField);
+  const doc = state.doc.toString();
+  return buildMarks(
+    attributeText(config.aiText, doc),
+    config.crosslinks,
+    doc.length,
+  );
+}
+
+// Decorations derived from the document itself, so attribution stays in lockstep
+// with the text — recomputed whenever the doc OR the config (aiText/crosslinks)
+// changes, all within the triggering transaction (no second dispatch).
+const decorationsField = StateField.define<DecorationSet>({
+  create: (state) => computeMarks(state),
+  update(decorations, transaction) {
+    const configChanged = transaction.effects.some((effect) =>
+      effect.is(setConfig),
+    );
+    if (transaction.docChanged || configChanged) {
+      return computeMarks(transaction.state);
+    }
+    return decorations.map(transaction.changes);
+  },
+  provide: (field) => EditorView.decorations.from(field),
+});
+
 // Live markdown styling. Sizes echo .literary-prose; syntax markers recede.
 const markdownHighlight = HighlightStyle.define([
   { tag: tags.heading1, fontSize: "1.55em", fontWeight: "600", lineHeight: "1.3" },
@@ -110,8 +149,13 @@ const editorTheme = EditorView.theme({
   ".cm-content": {
     fontFamily: "inherit",
     lineHeight: "inherit",
-    padding: "1.25rem",
+    // Tighter on phones so the text uses more of the narrow viewport; roomier
+    // on larger screens. Matches the responsive p-4 sm:p-5 of the read views.
+    padding: "1rem",
     caretColor: "var(--foreground)",
+  },
+  "@media (min-width: 640px)": {
+    ".cm-content": { padding: "1.25rem" },
   },
   ".cm-line": { padding: "0" },
   ".cm-cursor": { borderLeftColor: "var(--foreground)" },
@@ -141,7 +185,7 @@ const editorTheme = EditorView.theme({
 
 export function LiveMarkdownEditor({
   value,
-  segments,
+  aiText,
   crosslinks,
   onChange,
   onOpenCrosslink,
@@ -149,7 +193,8 @@ export function LiveMarkdownEditor({
   className,
 }: {
   value: string;
-  segments: AttributionSegment[];
+  /** The AI baseline; attribution is diffed against it inside the editor. */
+  aiText: string;
   crosslinks: CrosslinkRange[];
   onChange: (value: string) => void;
   /** ⌘/Ctrl-click on a resolved [[crosslink]] opens that submission. */
@@ -185,7 +230,10 @@ export function LiveMarkdownEditor({
           EditorView.lineWrapping,
           markdown(),
           syntaxHighlighting(markdownHighlight),
-          marksField,
+          // configField must precede decorationsField: the latter reads the
+          // former's post-update value when recomputing marks.
+          configField,
+          decorationsField,
           editorTheme,
           EditorView.updateListener.of((update) => {
             if (update.docChanged) {
@@ -275,11 +323,13 @@ export function LiveMarkdownEditor({
       }),
     });
     viewRef.current = view;
+    // Seed the initial attribution/crosslink config so marks paint on mount.
+    view.dispatch({ effects: setConfig.of({ aiText, crosslinks }) });
     return () => {
       viewRef.current = null;
       view.destroy();
     };
-    // The editor is created once; value/marks sync through the effects below.
+    // The editor is created once; value/config sync through the effects below.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -296,15 +346,14 @@ export function LiveMarkdownEditor({
     }
   }, [value]);
 
+  // Push the attribution baseline + crosslink ranges. The decorationsField
+  // recomputes marks from the live doc on this effect (config change) and on
+  // every keystroke, so the blue tint never lags or flickers.
   useEffect(() => {
     const view = viewRef.current;
     if (!view) return;
-    view.dispatch({
-      effects: setMarks.of(
-        buildMarks(segments, crosslinks, view.state.doc.length),
-      ),
-    });
-  }, [segments, crosslinks]);
+    view.dispatch({ effects: setConfig.of({ aiText, crosslinks }) });
+  }, [aiText, crosslinks]);
 
   return (
     <div

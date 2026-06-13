@@ -932,8 +932,8 @@ export function AnswerWorkspace({ user }: { user: User }) {
         </SheetContent>
       </Sheet>
 
-      <div className="mx-auto w-full max-w-6xl space-y-6 px-5 py-8 sm:px-6 sm:py-12">
-        <Card>
+      <div className="mx-auto w-full max-w-6xl space-y-6 px-3 py-8 sm:px-6 sm:py-12">
+        <Card className="[--card-spacing:--spacing(3)] sm:[--card-spacing:--spacing(4)]">
           <CardContent className="space-y-3">
             <Label htmlFor="question">What truth do you seek?</Label>
             <div className="relative">
@@ -1024,7 +1024,7 @@ export function AnswerWorkspace({ user }: { user: User }) {
         </Card>
 
         {isGenerating || isRegenerating ? (
-          <Card>
+          <Card className="[--card-spacing:--spacing(3)] sm:[--card-spacing:--spacing(4)]">
             <CardHeader>
               <div className="flex items-center gap-2">
                 {/* The one and only loading indicator while generating. */}
@@ -1050,11 +1050,11 @@ export function AnswerWorkspace({ user }: { user: User }) {
                 </details>
               ) : null}
               {streamingText ? (
-                <div className="retro-sunken literary-prose min-h-40 p-5">
+                <div className="retro-sunken literary-prose min-h-40 p-4 sm:p-5">
                   <Streamdown>{streamingText}</Streamdown>
                 </div>
               ) : (
-                <div className="retro-sunken flex min-h-40 flex-col items-center justify-center gap-2 p-5 text-sm text-muted-foreground">
+                <div className="retro-sunken flex min-h-40 flex-col items-center justify-center gap-2 p-4 text-sm text-muted-foreground sm:p-5">
                   <LoaderCircleIcon className="size-5 animate-spin" />
                   Generating in background…
                 </div>
@@ -1065,7 +1065,7 @@ export function AnswerWorkspace({ user }: { user: User }) {
 
         {answer ? (
           <div className="space-y-6">
-            <Card>
+            <Card className="[--card-spacing:--spacing(3)] sm:[--card-spacing:--spacing(4)]">
               <CardHeader>
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
@@ -1120,11 +1120,11 @@ export function AnswerWorkspace({ user }: { user: User }) {
                 ) : null}
                 {isRegenerating ? (
                   streamingText ? (
-                    <div className="retro-sunken literary-prose min-h-40 p-5">
+                    <div className="retro-sunken literary-prose min-h-40 p-4 sm:p-5">
                       <Streamdown>{streamingText}</Streamdown>
                     </div>
                   ) : (
-                    <div className="retro-sunken flex min-h-40 flex-col items-center justify-center gap-2 p-5 text-sm text-muted-foreground">
+                    <div className="retro-sunken flex min-h-40 flex-col items-center justify-center gap-2 p-4 text-sm text-muted-foreground sm:p-5">
                       <LoaderCircleIcon className="size-5 animate-spin" />
                       Generating new version in background…
                     </div>
@@ -1132,7 +1132,7 @@ export function AnswerWorkspace({ user }: { user: User }) {
                 ) : (
                   <LiveMarkdownEditor
                     value={currentText}
-                    segments={segments}
+                    aiText={answer.aiText}
                     crosslinks={crosslinkRanges}
                     onChange={(next) => {
                       setCurrentText(next);
