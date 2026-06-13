@@ -5,7 +5,7 @@ import {
   type AttributionSegment,
 } from "@/lib/attribution";
 import { getDatabase } from "@/lib/mongodb";
-import type { SerializedAnswer } from "@/lib/types";
+import type { GenerationStatus, SerializedAnswer } from "@/lib/types";
 import {
   MAX_VERSIONS,
   shouldSnapshotBeforeEdit,
@@ -29,6 +29,10 @@ export type AnswerDocument = {
   embeddingModel?: string | null;
   // Bounded revert history (see lib/versioning); excluded from list payloads.
   versions?: AnswerVersion[];
+  // Background generation state. Absent or "done" = fully saved.
+  generationStatus?: GenerationStatus;
+  generatingText?: string;
+  generatingStartedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -52,6 +56,7 @@ function snapshotOf(
 
 function serializeAnswer(
   answer: WithId<AnswerDocument>,
+  includeGeneratingText = false,
 ): SerializedAnswer {
   return {
     id: answer._id.toHexString(),
@@ -63,6 +68,13 @@ function serializeAnswer(
     segments: answer.segments,
     provider: answer.provider,
     model: answer.model,
+    generationStatus: answer.generationStatus,
+    ...(includeGeneratingText && answer.generatingText !== undefined
+      ? { generatingText: answer.generatingText }
+      : {}),
+    ...(answer.generatingStartedAt
+      ? { generatingStartedAt: answer.generatingStartedAt.toISOString() }
+      : {}),
     createdAt: answer.createdAt.toISOString(),
     updatedAt: answer.updatedAt.toISOString(),
   };
@@ -98,6 +110,199 @@ export async function createAnswer(
   return serializeAnswer({ ...document, _id: result.insertedId });
 }
 
+/** Create a placeholder answer that will be populated by a background job. */
+export async function createAnswerGenerating(params: {
+  userId: string;
+  userEmail: string;
+  question: string;
+  provider: string;
+  model: string;
+}) {
+  const now = new Date();
+  const document: AnswerDocument = {
+    ...params,
+    aiText: "",
+    currentText: "",
+    segments: [],
+    generationStatus: "generating",
+    generatingText: "",
+    generatingStartedAt: now,
+    createdAt: now,
+    updatedAt: now,
+  };
+  const collection = await answersCollection();
+  const result = await collection.insertOne(document);
+  return serializeAnswer({ ...document, _id: result.insertedId });
+}
+
+/** Return a single answer (including partial generatingText for polling). */
+export async function getAnswer(
+  id: string,
+  userId: string,
+): Promise<SerializedAnswer | null> {
+  if (!ObjectId.isValid(id)) return null;
+  const collection = await answersCollection();
+  const document = await collection.findOne(
+    { _id: new ObjectId(id), userId },
+    { projection: { versions: 0 } },
+  );
+  if (!document) return null;
+  return serializeAnswer(document, true);
+}
+
+/** Update the partial text accumulated so far (polling clients read this). */
+export async function setGeneratingText(
+  id: string,
+  userId: string,
+  text: string,
+) {
+  if (!ObjectId.isValid(id)) return;
+  const collection = await answersCollection();
+  await collection.updateOne(
+    { _id: new ObjectId(id), userId },
+    { $set: { generatingText: text } },
+  );
+}
+
+/** Peek at the current generation status (used by background job for cancel checks). */
+export async function getAnswerGenerationStatus(
+  id: string,
+  userId: string,
+): Promise<GenerationStatus | null> {
+  if (!ObjectId.isValid(id)) return null;
+  const collection = await answersCollection();
+  const doc = await collection.findOne(
+    { _id: new ObjectId(id), userId },
+    { projection: { generationStatus: 1 } },
+  );
+  return doc?.generationStatus ?? null;
+}
+
+/** Finalise a brand-new answer after background generation completes. */
+export async function completeAnswerGeneration(
+  id: string,
+  userId: string,
+  aiText: string,
+  provider: string,
+  model: string,
+  questionEmbedding: number[] | null,
+  embeddingModel: string | null,
+) {
+  if (!ObjectId.isValid(id)) return;
+  const collection = await answersCollection();
+  const now = new Date();
+  const segments = attributeText(aiText, aiText);
+  await collection.updateOne(
+    { _id: new ObjectId(id), userId },
+    {
+      $set: {
+        aiText,
+        currentText: aiText,
+        segments,
+        provider,
+        model,
+        questionEmbedding,
+        embeddingModel,
+        generationStatus: "done",
+        updatedAt: now,
+      },
+      $unset: { generatingText: "", generatingStartedAt: "" },
+    },
+  );
+}
+
+/** Mark existing answer as generating (snapshot first), then fill via background job. */
+export async function markAnswerRegenerating(
+  id: string,
+  userId: string,
+): Promise<AnswerDocument | null> {
+  if (!ObjectId.isValid(id)) return null;
+  const collection = await answersCollection();
+  const existing = await collection.findOne({ _id: new ObjectId(id), userId });
+  if (!existing) return null;
+  const now = new Date();
+  await collection.updateOne(
+    { _id: new ObjectId(id), userId },
+    {
+      $set: {
+        generationStatus: "generating",
+        generatingText: "",
+        generatingStartedAt: now,
+        updatedAt: now,
+      },
+      $push: {
+        versions: {
+          $each: [snapshotOf(existing, "regenerate", now)],
+          $slice: -MAX_VERSIONS,
+        },
+      },
+    },
+  );
+  return existing;
+}
+
+/** Finalise a regenerated answer after background job completes. */
+export async function completeAnswerRegeneration(
+  id: string,
+  userId: string,
+  aiText: string,
+  currentText: string,
+  provider: string,
+  model: string,
+) {
+  if (!ObjectId.isValid(id)) return;
+  const collection = await answersCollection();
+  const now = new Date();
+  const segments = attributeText(aiText, currentText);
+  await collection.updateOne(
+    { _id: new ObjectId(id), userId },
+    {
+      $set: {
+        aiText,
+        currentText,
+        segments,
+        provider,
+        model,
+        questionEmbedding: null,
+        embeddingModel: null,
+        generationStatus: "done",
+        updatedAt: now,
+      },
+      $unset: { generatingText: "", generatingStartedAt: "" },
+    },
+  );
+}
+
+/** Mark a background generation as failed. */
+export async function failAnswerGeneration(id: string, userId: string) {
+  if (!ObjectId.isValid(id)) return;
+  const collection = await answersCollection();
+  await collection.updateOne(
+    { _id: new ObjectId(id), userId },
+    {
+      $set: { generationStatus: "error" },
+      $unset: { generatingText: "", generatingStartedAt: "" },
+    },
+  );
+}
+
+/** Cancel a running background generation. Returns true if the doc was found. */
+export async function cancelAnswerGeneration(
+  id: string,
+  userId: string,
+): Promise<boolean> {
+  if (!ObjectId.isValid(id)) return false;
+  const collection = await answersCollection();
+  const result = await collection.updateOne(
+    { _id: new ObjectId(id), userId, generationStatus: "generating" },
+    {
+      $set: { generationStatus: "cancelled" },
+      $unset: { generatingText: "", generatingStartedAt: "" },
+    },
+  );
+  return result.matchedCount > 0;
+}
+
 export async function listAnswers(userId: string) {
   const collection = await answersCollection();
   const documents = await collection
@@ -105,7 +310,7 @@ export async function listAnswers(userId: string) {
     .sort({ updatedAt: -1 })
     .toArray();
 
-  return documents.map(serializeAnswer);
+  return documents.map((doc) => serializeAnswer(doc));
 }
 
 // Lean projection for related-question ranking: ids, questions, and stored

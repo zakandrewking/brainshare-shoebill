@@ -1,13 +1,11 @@
+import { after } from "next/server";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { createAnswer, listAnswers } from "@/lib/answers";
+import { createAnswerGenerating, listAnswers } from "@/lib/answers";
 import { AuthError, requireAuthorizedUser } from "@/lib/auth";
-import {
-  embeddingInput,
-  embedQuestions,
-  getEmbeddingConfig,
-} from "@/lib/embedding";
+import { getGenerationConfig } from "@/lib/ai";
+import { runBackgroundGeneration } from "@/lib/generation";
 
 export const runtime = "nodejs";
 
@@ -35,45 +33,33 @@ export async function GET(request: Request) {
 
 const requestSchema = z.object({
   question: z.string().trim().min(3).max(4000),
-  aiText: z.string().trim().min(1).max(20000),
-  provider: z.string().trim().min(1).max(100),
-  model: z.string().trim().min(1).max(100),
 });
 
 export async function POST(request: Request) {
   try {
     const user = await requireAuthorizedUser(request);
-    const { question, aiText, provider, model } = requestSchema.parse(
-      await request.json(),
-    );
+    const { question } = requestSchema.parse(await request.json());
+    const { provider, model } = getGenerationConfig();
 
-    // Embed the question for related-question ranking. Never block saving on
-    // it — a failed or disabled embedding is backfilled lazily by /api/related.
-    let questionEmbedding: number[] | null = null;
-    let embeddingModel: string | null = null;
-    try {
-      const embeddings = await embedQuestions([embeddingInput(question, aiText)]);
-      if (embeddings) {
-        questionEmbedding = embeddings[0];
-        embeddingModel = getEmbeddingConfig().model;
-      }
-    } catch (error) {
-      console.error("[answers] question embedding failed:", error);
-    }
-
-    const answer = await createAnswer({
+    const answer = await createAnswerGenerating({
       userId: user.uid,
       userEmail: user.email!,
       question,
-      aiText,
-      currentText: aiText,
       provider,
       model,
-      questionEmbedding,
-      embeddingModel,
     });
 
-    return NextResponse.json({ answer }, { status: 201 });
+    // Fire and forget: generation continues after the response is sent, even
+    // if the browser tab is closed.
+    after(async () => {
+      await runBackgroundGeneration({
+        answerId: answer.id,
+        userId: user.uid,
+        question,
+      });
+    });
+
+    return NextResponse.json({ answer }, { status: 202 });
   } catch (error) {
     if (error instanceof AuthError) {
       return NextResponse.json(

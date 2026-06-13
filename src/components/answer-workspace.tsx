@@ -16,6 +16,7 @@ import {
   SearchIcon,
   SendIcon,
   Trash2Icon,
+  XCircleIcon,
   XIcon,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -56,7 +57,6 @@ import {
   normalizeTopic,
   suggestQuestionForTopic,
 } from "@/lib/crosslinks";
-import { extractUserPassages, weaveUserText } from "@/lib/reinject";
 import { findRelatedQuestions } from "@/lib/related";
 import { cn } from "@/lib/utils";
 import { getFirebaseAuth } from "@/lib/firebase/client";
@@ -118,11 +118,13 @@ export function AnswerWorkspace({ user }: { user: User }) {
   const [answer, setAnswer] = useState<SerializedAnswer | null>(null);
   const [currentText, setCurrentText] = useState("");
   const [streamingText, setStreamingText] = useState("");
-  // The model's live reasoning summary ("thinking"). Ephemeral — shown only
-  // while generating and never persisted.
+  // Reasoning is no longer streamed (background generation); kept for the
+  // post-generation display of the last reasoning summary.
   const [streamingReasoning, setStreamingReasoning] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [isRegenerating, setIsRegenerating] = useState(false);
+  // ID of the answer currently being polled for background generation progress.
+  const pollingAnswerIdRef = useRef<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isSaved, setIsSaved] = useState(true);
   // Submissions semantically related to the open answer, shown as links so
@@ -358,14 +360,16 @@ export function AnswerWorkspace({ user }: { user: User }) {
         setQuestion(submission?.question ?? "");
       }
       setStreamingText("");
-      // Reasoning belongs to a generation event; it survives completion
-      // (shown collapsed on the answer) but not switching submissions.
       setStreamingReasoning("");
       setAnswerRelated([]);
       setHistoryOpen(false);
       setVersions(null);
       setPreviewIndex(null);
       setIsSaved(true);
+      setIsGenerating(false);
+      setIsRegenerating(false);
+      // Stop the poll loop for any previous answer.
+      pollingAnswerIdRef.current = null;
     },
     [],
   );
@@ -522,81 +526,137 @@ export function AnswerWorkspace({ user }: { user: User }) {
     }
   }
 
-  // Stream a fresh answer for the question, updating the live preview as text
-  // arrives. Returns the completed text plus the model that produced it.
-  // `userPassages` (regeneration) makes the model compose around the author's
-  // text via {{n}} placeholders — see lib/reinject.
-  async function streamGeneration(
-    trimmedQuestion: string,
-    userPassages?: string[],
-  ) {
-    const response = await authenticatedFetch(user, "/api/generate", {
-      method: "POST",
-      body: JSON.stringify({
-        question: trimmedQuestion,
-        ...(userPassages && userPassages.length > 0 ? { userPassages } : {}),
-      }),
-    });
-
-    if (!response.ok || !response.body) {
-      throw new Error(await readError(response));
-    }
-
-    const provider = response.headers.get("x-ai-provider") ?? "openai";
-    const model = response.headers.get("x-ai-model") ?? "gpt-5.5";
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let completeText = "";
-    let reasoningText = "";
-
-    // The body is newline-delimited JSON; each line is a reasoning/text/error
-    // event (see ANSWER_STREAM_CONTENT_TYPE in lib/ai.ts).
-    const handleLine = (line: string) => {
-      const trimmed = line.trim();
-      if (!trimmed) return;
-      let event: { t?: string; v?: string };
+  // Poll a background generation until it completes, is cancelled, or errors.
+  // Updates streamingText from generatingText so the user sees text building up.
+  // Must be called with the answer already set in state.
+  const pollGeneration = useCallback(
+    async (
+      answerId: string,
+      setGenerating: (v: boolean) => void,
+      isRegen: boolean,
+    ) => {
+      pollingAnswerIdRef.current = answerId;
+      const STALE_MS = 10 * 60 * 1000; // 10 minutes
       try {
-        event = JSON.parse(trimmed);
-      } catch {
-        return;
-      }
-      if (event.t === "text" && event.v) {
-        completeText += event.v;
-        setStreamingText(completeText);
-      } else if (event.t === "reasoning" && event.v) {
-        reasoningText += event.v;
-        setStreamingReasoning(reasoningText);
-      } else if (event.t === "error") {
-        console.error("Answer stream reported an error:", event.v);
-      }
-    };
+        while (true) {
+          await new Promise((resolve) => setTimeout(resolve, 1500));
+          // Stop if the user navigated away from this answer.
+          if (pollingAnswerIdRef.current !== answerId) return;
 
-    let buffer = "";
-    try {
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        // Keep the last (possibly partial) line in the buffer.
-        buffer = lines.pop() ?? "";
-        for (const line of lines) handleLine(line);
+          let polled: SerializedAnswer;
+          try {
+            const res = await authenticatedFetch(
+              user,
+              `/api/answers/${answerId}`,
+            );
+            if (!res.ok) {
+              toast.error("Polling failed. Refresh to check the result.");
+              return;
+            }
+            const body = (await res.json()) as { answer: SerializedAnswer };
+            polled = body.answer;
+          } catch (error) {
+            console.error("Generation poll error:", error);
+            continue; // transient network error — retry
+          }
+
+          // Show partial text as it builds up.
+          if (polled.generatingText) {
+            setStreamingText(polled.generatingText);
+          }
+
+          if (polled.generationStatus === "done") {
+            setAnswer(polled);
+            setCurrentText(polled.currentText);
+            setStreamingText("");
+            setIsSaved(true);
+            if (isRegen) toast.success("Answer regenerated.");
+            else void loadSubmissions();
+            return;
+          }
+
+          if (polled.generationStatus === "cancelled") {
+            setStreamingText("");
+            if (isRegen) {
+              // Restore the old answer state by fetching fresh
+              try {
+                const res = await authenticatedFetch(
+                  user,
+                  `/api/answers/${answerId}`,
+                );
+                if (res.ok) {
+                  const body = (await res.json()) as {
+                    answer: SerializedAnswer;
+                  };
+                  setAnswer(body.answer);
+                  setCurrentText(body.answer.currentText);
+                  setIsSaved(true);
+                }
+              } catch {
+                // ignore
+              }
+            }
+            toast.info("Generation cancelled.");
+            return;
+          }
+
+          if (polled.generationStatus === "error") {
+            setStreamingText("");
+            toast.error("Generation failed. Please try again.");
+            return;
+          }
+
+          // Guard against stale generating state (lambda timed out, etc.)
+          if (
+            polled.generatingStartedAt &&
+            Date.now() - new Date(polled.generatingStartedAt).getTime() >
+              STALE_MS
+          ) {
+            setStreamingText("");
+            toast.error(
+              "Generation timed out. The server may still be working — refresh to check.",
+            );
+            return;
+          }
+        }
+      } finally {
+        if (pollingAnswerIdRef.current === answerId) {
+          pollingAnswerIdRef.current = null;
+        }
+        setGenerating(false);
       }
-    } catch (streamError) {
-      // The stream can abort at finalization even after the full answer has been
-      // delivered. Don't throw away the answer the user just watched stream in —
-      // keep it and let the save proceed. Only fail if no text arrived at all.
-      console.error("Answer stream ended with an error:", streamError);
-      if (completeText.trim().length === 0) {
-        throw new Error(
-          "The answer stream failed before any text arrived. Please try again.",
-        );
-      }
+    },
+    [user, loadSubmissions],
+  );
+
+  // When the open answer is already generating (e.g. page reload with ?a=id),
+  // resume the polling loop so the UI stays live.
+  const answerGenerationStatus = answer?.generationStatus;
+  const answerId2 = answer?.id;
+  useEffect(() => {
+    if (
+      answerGenerationStatus === "generating" &&
+      answerId2 &&
+      pollingAnswerIdRef.current !== answerId2
+    ) {
+      setIsGenerating(true);
+      void pollGeneration(answerId2, setIsGenerating, false);
     }
+  }, [answerGenerationStatus, answerId2, pollGeneration]);
 
-    buffer += decoder.decode();
-    handleLine(buffer);
-    return { completeText, provider, model };
+  async function cancelGeneration(answerId: string) {
+    try {
+      const res = await authenticatedFetch(
+        user,
+        `/api/answers/${answerId}/cancel`,
+        { method: "POST" },
+      );
+      if (!res.ok) {
+        throw new Error(await readError(res));
+      }
+    } catch (error) {
+      toast.error(describeActionError(error, "cancelling the generation"));
+    }
   }
 
   async function generate() {
@@ -613,45 +673,34 @@ export function AnswerWorkspace({ user }: { user: User }) {
     setStreamingReasoning("");
 
     try {
-      const { completeText, provider, model } =
-        await streamGeneration(trimmedQuestion);
-
-      const saveResponse = await authenticatedFetch(user, "/api/answers", {
+      const response = await authenticatedFetch(user, "/api/answers", {
         method: "POST",
-        body: JSON.stringify({
-          question: trimmedQuestion,
-          aiText: completeText,
-          provider,
-          model,
-        }),
+        body: JSON.stringify({ question: trimmedQuestion }),
       });
 
-      if (!saveResponse.ok) {
-        throw new Error(await readError(saveResponse));
+      if (!response.ok) {
+        throw new Error(await readError(response));
       }
 
-      const body = (await saveResponse.json()) as {
-        answer: SerializedAnswer;
-      };
-      setAnswer(body.answer);
-      setCurrentText(body.answer.currentText);
-      setStreamingText("");
-      setIsSaved(true);
-      pushAnswerUrl(body.answer.id);
+      const body = (await response.json()) as { answer: SerializedAnswer };
+      const placeholder = body.answer;
+
+      // Show the placeholder immediately so the submission list updates.
+      setAnswer(placeholder);
+      pushAnswerUrl(placeholder.id);
       void loadSubmissions();
+
+      // Poll until the background job completes.
+      void pollGeneration(placeholder.id, setIsGenerating, false);
     } catch (error) {
       console.error(error);
-      toast.error(describeActionError(error, "generating the answer"));
-    } finally {
+      toast.error(describeActionError(error, "starting the generation"));
       setIsGenerating(false);
     }
   }
 
-  // Re-run the model for an existing submission and overwrite it in place:
-  // same id, fresh AI baseline. The user's passages survive: the model is
-  // prompted to compose around them via placeholders, and weaveUserText puts
-  // the exact words back into currentText (never the baseline) so attribution
-  // still credits the author.
+  // Re-run the model for an existing submission in the background.
+  // User passages are extracted server-side from the current segments.
   async function regenerate() {
     if (!answer) return;
 
@@ -660,50 +709,24 @@ export function AnswerWorkspace({ user }: { user: User }) {
     setStreamingReasoning("");
 
     try {
-      const userPassages = extractUserPassages(segments);
-      const { completeText, provider, model } = await streamGeneration(
-        answer.question,
-        userPassages,
-      );
-
-      const woven =
-        userPassages.length > 0
-          ? weaveUserText(completeText, userPassages)
-          : { aiText: completeText, currentText: completeText };
-
       const response = await authenticatedFetch(
         user,
-        `/api/answers/${answer.id}`,
-        {
-          method: "PUT",
-          body: JSON.stringify({
-            aiText: woven.aiText,
-            ...(userPassages.length > 0
-              ? { currentText: woven.currentText }
-              : {}),
-            provider,
-            model,
-          }),
-        },
+        `/api/answers/${answer.id}/regenerate`,
+        { method: "POST" },
       );
 
       if (!response.ok) {
         throw new Error(await readError(response));
       }
 
-      const body = (await response.json()) as {
-        answer: SerializedAnswer;
-      };
+      const body = (await response.json()) as { answer: SerializedAnswer };
       setAnswer(body.answer);
-      setCurrentText(body.answer.currentText);
-      setStreamingText("");
-      setIsSaved(true);
-      toast.success("Answer regenerated.");
-      void loadSubmissions();
+
+      // Poll until the background job completes.
+      void pollGeneration(answer.id, setIsRegenerating, true);
     } catch (error) {
       console.error(error);
-      toast.error(describeActionError(error, "regenerating the answer"));
-    } finally {
+      toast.error(describeActionError(error, "starting regeneration"));
       setIsRegenerating(false);
     }
   }
@@ -865,21 +888,38 @@ export function AnswerWorkspace({ user }: { user: User }) {
                     onClick={() => openSubmission(submission)}
                     className="flex min-w-0 flex-1 flex-col items-start gap-0.5 px-3 py-2 text-left"
                   >
-                    <span className="line-clamp-2 w-full text-sm font-medium">
-                      {submission.question}
+                    <span className="flex min-w-0 items-center gap-1.5 text-sm font-medium">
+                      {submission.generationStatus === "generating" ? (
+                        <LoaderCircleIcon className="size-3.5 shrink-0 animate-spin text-muted-foreground" />
+                      ) : null}
+                      <span className="line-clamp-2">{submission.question}</span>
                     </span>
                     <span className="text-xs text-muted-foreground">
                       {new Date(submission.updatedAt).toLocaleString()}
                     </span>
                   </button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    aria-label="Delete submission"
-                    onClick={() => deleteSubmission(submission.id)}
-                  >
-                    <Trash2Icon />
-                  </Button>
+                  {submission.generationStatus === "generating" ? (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label="Cancel generation"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        void cancelGeneration(submission.id);
+                      }}
+                    >
+                      <XCircleIcon />
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label="Delete submission"
+                      onClick={() => deleteSubmission(submission.id)}
+                    >
+                      <Trash2Icon />
+                    </Button>
+                  )}
                 </div>
               ))}
             </div>
@@ -1011,20 +1051,12 @@ export function AnswerWorkspace({ user }: { user: User }) {
               ) : null}
               {streamingText ? (
                 <div className="retro-sunken literary-prose min-h-40 p-5">
-                  <Streamdown
-                    isAnimating
-                    animated={{
-                      animation: "fadeIn",
-                      sep: "word",
-                      duration: 450,
-                    }}
-                  >
-                    {streamingText}
-                  </Streamdown>
+                  <Streamdown>{streamingText}</Streamdown>
                 </div>
               ) : (
-                <div className="retro-sunken flex min-h-40 items-center justify-center p-5 text-sm text-muted-foreground">
-                  The answer will stream here.
+                <div className="retro-sunken flex min-h-40 flex-col items-center justify-center gap-2 p-5 text-sm text-muted-foreground">
+                  <LoaderCircleIcon className="size-5 animate-spin" />
+                  Generating in background…
                 </div>
               )}
             </CardContent>
@@ -1043,15 +1075,26 @@ export function AnswerWorkspace({ user }: { user: User }) {
                     <Badge variant="outline">
                       {answer.provider} / {answer.model}
                     </Badge>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={regenerate}
-                      disabled={isGenerating || isRegenerating}
-                    >
-                      <RefreshCwIcon />
-                      {isRegenerating ? "Regenerating" : "Regenerate"}
-                    </Button>
+                    {isGenerating || isRegenerating ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => void cancelGeneration(answer.id)}
+                      >
+                        <XCircleIcon />
+                        Cancel
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={regenerate}
+                        disabled={isGenerating || isRegenerating}
+                      >
+                        <RefreshCwIcon />
+                        Regenerate
+                      </Button>
+                    )}
                     <Button
                       variant="outline"
                       size="sm"
@@ -1075,24 +1118,37 @@ export function AnswerWorkspace({ user }: { user: User }) {
                     </div>
                   </details>
                 ) : null}
-                <LiveMarkdownEditor
-                  value={currentText}
-                  segments={segments}
-                  crosslinks={crosslinkRanges}
-                  onChange={(next) => {
-                    setCurrentText(next);
-                    setIsSaved(false);
-                  }}
-                  onOpenCrosslink={(id) => {
-                    const match = submissions.find(
-                      (submission) => submission.id === id,
-                    );
-                    if (match) {
-                      openSubmission(match);
-                    }
-                  }}
-                  onCreateCrosslink={startQuestionForTopic}
-                />
+                {isRegenerating ? (
+                  streamingText ? (
+                    <div className="retro-sunken literary-prose min-h-40 p-5">
+                      <Streamdown>{streamingText}</Streamdown>
+                    </div>
+                  ) : (
+                    <div className="retro-sunken flex min-h-40 flex-col items-center justify-center gap-2 p-5 text-sm text-muted-foreground">
+                      <LoaderCircleIcon className="size-5 animate-spin" />
+                      Generating new version in background…
+                    </div>
+                  )
+                ) : (
+                  <LiveMarkdownEditor
+                    value={currentText}
+                    segments={segments}
+                    crosslinks={crosslinkRanges}
+                    onChange={(next) => {
+                      setCurrentText(next);
+                      setIsSaved(false);
+                    }}
+                    onOpenCrosslink={(id) => {
+                      const match = submissions.find(
+                        (submission) => submission.id === id,
+                      );
+                      if (match) {
+                        openSubmission(match);
+                      }
+                    }}
+                    onCreateCrosslink={startQuestionForTopic}
+                  />
+                )}
                 {linkChips.length > 0 ? (
                   <div className="flex flex-wrap items-center gap-1.5 text-xs">
                     <span className="flex items-center gap-1 text-muted-foreground">

@@ -3,12 +3,40 @@ import { z } from "zod";
 
 import {
   deleteAnswer,
+  getAnswer,
   regenerateAnswer,
   updateAnswer,
 } from "@/lib/answers";
 import { AuthError, requireAuthorizedUser } from "@/lib/auth";
 
 export const runtime = "nodejs";
+
+export async function GET(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  try {
+    const user = await requireAuthorizedUser(request);
+    const { id } = await params;
+    const answer = await getAnswer(id, user.uid);
+    if (!answer) {
+      return NextResponse.json({ error: "Answer not found." }, { status: 404 });
+    }
+    return NextResponse.json({ answer });
+  } catch (error) {
+    if (error instanceof AuthError) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: error.status },
+      );
+    }
+    console.error(error);
+    return NextResponse.json(
+      { error: "The answer could not be loaded." },
+      { status: 500 },
+    );
+  }
+}
 
 const requestSchema = z.object({
   currentText: z.string().max(20000),
