@@ -17,11 +17,7 @@ confirmation" (shipped + verified, pending the user's check, with a one-line
 
 ## Now
 
-- `[T58]` `wip:claude-opus-4.8/pf4j@2026-06-13T16:52Z` — **Background AI
-  generations.** Generations should continue server-side even if the user
-  closes/refreshes the page. The submissions list shows a spinner next to any
-  answer that is still generating. The user can cancel an in-progress generation
-  from the list or from the open answer card.
+_(in progress — see Awaiting confirmation)_
 
 ## Next
 - `[T50]` `unclaimed` — **Dark-mode + mobile visual review of the CodeMirror
@@ -35,6 +31,12 @@ confirmation" (shipped + verified, pending the user's check, with a one-line
 _(Shipped + verified + deployed; pending the user's check. Confirming moves an
 item to Recently shipped; a problem report moves it back to Now.)_
 
+- `[T58]` Background AI generations — generations now run server-side via
+  `after()` and survive page close. Submissions list shows a spinner + cancel
+  button while generating; reopening/reloading auto-resumes the poll loop.
+  CHECK: submit a question, immediately close the tab, reopen — the answer
+  should appear completed (or still generating with partial text visible).
+  Also: cancel mid-generation → toast + answer stays at previous state.
 - `[T57]` Version history as a previewable modal — History button now opens a
   centered modal with a version list on the left and full rendered preview on
   the right; "Restore this version" button in footer. CHECK: open any answer →
