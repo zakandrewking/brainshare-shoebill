@@ -13,17 +13,15 @@ someone claimed first — pull and pick another. Stale claims (>30 min, no new
 commits) may be reclaimed. On completion, move the item to "Awaiting
 confirmation" (shipped + verified, pending the user's check, with a one-line
 "how to check"); only the user's confirmation moves it to "Recently shipped".
-**Next free id: T58.**
+**Next free id: T59.**
 
 ## Now
 
-- `[T57]` `wip:claude-opus-4.8/pf4j@2026-06-13T16:46Z` — **Version history as a
-  previewable modal.** Replace the inline History panel on the answer card with
-  a centered modal listing ALL stored versions (newest-first: kind, timestamp,
-  one-line preview). Selecting a version shows its full rendered text in a
-  preview pane so the user can read it before committing; a "Restore this
-  version" action swaps it in and closes the modal. Needs a new `ui/dialog.tsx`
-  (Base UI Dialog, retro-styled like the sheet).
+- `[T58]` `wip:claude-opus-4.8/pf4j@2026-06-13T16:52Z` — **Background AI
+  generations.** Generations should continue server-side even if the user
+  closes/refreshes the page. The submissions list shows a spinner next to any
+  answer that is still generating. The user can cancel an in-progress generation
+  from the list or from the open answer card.
 
 ## Next
 - `[T50]` `unclaimed` — **Dark-mode + mobile visual review of the CodeMirror
@@ -37,6 +35,10 @@ confirmation" (shipped + verified, pending the user's check, with a one-line
 _(Shipped + verified + deployed; pending the user's check. Confirming moves an
 item to Recently shipped; a problem report moves it back to Now.)_
 
+- `[T57]` Version history as a previewable modal — History button now opens a
+  centered modal with a version list on the left and full rendered preview on
+  the right; "Restore this version" button in footer. CHECK: open any answer →
+  click History → browse versions, preview text, restore one.
 - `[T54]` Autosave as you type: edits PATCH quietly ~800 ms after the last
   keystroke (no success toast; errors still toast; keystrokes typed during an
   in-flight save are never clobbered and trigger a follow-up save). The
