@@ -13,11 +13,17 @@ someone claimed first — pull and pick another. Stale claims (>30 min, no new
 commits) may be reclaimed. On completion, move the item to "Awaiting
 confirmation" (shipped + verified, pending the user's check, with a one-line
 "how to check"); only the user's confirmation moves it to "Recently shipped".
-**Next free id: T61.**
+**Next free id: T62.**
 
 ## Now
 
-_(in progress — see Awaiting confirmation)_
+- `[T61]` `wip:claude-opus-4.8/pf4j@2026-06-14T16:55Z` — **One persistent
+  Thinking panel, one spinner.** Today there are two spinners while thinking and
+  the Thinking panel vanishes once done. Goal: never let panels disappear; show a
+  single spinner. Persist the reasoning/thinking tokens with the answer so the
+  Thinking panel is always present as a collapsed indicator — the SAME component
+  whether generation is in progress, just finished, or loaded fresh later.
+  Minimize layout reflow (panel keeps its place across states).
 
 ## Next
 - `[T50]` `unclaimed` — **Dark-mode + mobile visual review of the CodeMirror
@@ -31,92 +37,23 @@ _(in progress — see Awaiting confirmation)_
 _(Shipped + verified + deployed; pending the user's check. Confirming moves an
 item to Recently shipped; a problem report moves it back to Now.)_
 
-- `[T60]` Editor render glitches fixed — attribution decorations now compute
-  inside CodeMirror from the live doc (atomic with each keystroke) instead of
-  via a second React dispatch, so the blue tint no longer flickers and the
-  scroll no longer jumps. CHECK on your phone: type into an answer — your text
-  tints blue immediately and stays put, no scroll bouncing.
-- `[T59]` Better mobile horizontal-space usage — page/editor/card padding
-  trimmed below the `sm` breakpoint (px-3, 1rem editor inset, 0.75rem card
-  inset) so text fills more of a narrow screen; desktop unchanged. CHECK on
-  your phone: the answer text should reach closer to both edges.
-- `[T58]` Background AI generations — generations now run server-side via
-  `after()` and survive page close. Submissions list shows a spinner + cancel
-  button while generating; reopening/reloading auto-resumes the poll loop.
-  CHECK: submit a question, immediately close the tab, reopen — the answer
-  should appear completed (or still generating with partial text visible).
-  Also: cancel mid-generation → toast + answer stays at previous state.
-- `[T57]` Version history as a previewable modal — History button now opens a
-  centered modal with a version list on the left and full rendered preview on
-  the right; "Restore this version" button in footer. CHECK: open any answer →
-  click History → browse versions, preview text, restore one.
-- `[T54]` Autosave as you type: edits PATCH quietly ~800 ms after the last
-  keystroke (no success toast; errors still toast; keystrokes typed during an
-  in-flight save are never clobbered and trigger a follow-up save). The
-  manual Save button is gone; the footer chip reads Saving/Saved/Unsaved and
-  the hint says "Saves as you type". The local submissions copy updates on
-  each save so backlinks/related stay fresh. CHECK: edit an answer, pause a
-  second — chip flips Unsaved → Saving → Saved; reload and the edit is there.
-- `[T52]` Inline citations (academia style): the system prompt now demands
-  parenthetical author–year citations at the claims they support, matching
-  the bottom References list 1:1, no invented sources. CHECK: regenerate any
-  entry — claims should carry (Author Year) inline and the list at the
-  bottom should correspond. (New generations only.)
-- `[T53]` "Shipped ≠ done" rule live in AGENTS.md + this section exists; the
-  lifecycle is now wip → Awaiting confirmation → Recently shipped (on your
-  confirmation). CHECK: this section reads right to you.
-
-- `[T56]` Versioning with revert. Every answer keeps its last 20 versions:
-  regenerate and restore always snapshot the state they displace; edits
-  checkpoint at most every 10 minutes (autosave would otherwise spam; ⌘Z in
-  the editor covers fine grain — the first edit after a regenerate always
-  snapshots, so the fresh baseline is never lost). New History button on the
-  answer card lists versions newest-first (one-line preview, kind,
-  timestamp) with Restore; restoring snapshots the current state first, so
-  a restore is itself revertible. Attribution recomputed and embedding
-  invalidated on restore. Verified live on prod (edit → checkpoint → restore
-  → original text back, history shows both versions). CHECK: edit an answer,
-  open History, Restore the checkpoint — your pre-edit text returns.
-- `[T55]` Regenerate preserves your text, attributed as yours. Your passages
-  (user segments ≥3 chars, ≤20) go into the prompt; the model is told to
-  build its prose AROUND them as fixed verbatim islands — sentences leading
-  in and picking up the thread — marking each spot with a `{{n}}`
-  placeholder it must not echo. `weaveUserText` then puts your exact words
-  into `currentText` only (baseline gets markers stripped), so the
-  attribution diff re-credits them to you. Cases: unplaced passage →
-  appended at the end, never lost; repeated/invented markers → stripped;
-  no edits → plain regenerate; <3-char edits (pluralizations) → dropped;
-  marker syntax inside your text → safe (single-pass weave). 10 new tests
-  (69 total). CHECK: edit an answer (add a sentence), wait for Saved, hit
-  Regenerate — your sentence should survive, still highlighted as yours,
-  with new AI prose flowing around it. Note: `{{1}}` tokens may flash in
-  the streaming view; cosmetic.
-- `[T43]` (rev 2: now touch-native) `[[topic]]` links work in the editor text
-  on mobile: a clean tap follows a resolved link or opens the prefilled
-  question for an unresolved one; scrolls, drags, and long-presses still
-  edit. Desktop ⌘/Ctrl-click unchanged; chip row remains as a fallback.
-  CHECK on the phone: tap a dashed `[[topic]]` in an answer — the ask box
-  should fill and focus; tap a solid one — its entry opens.
-- `[T44]` Suggestion clicks keep the typed draft. CHECK: type a few words,
-  click a dropdown suggestion — the entry opens below, input text unchanged.
-- `[T46]` One loading indicator while generating (header spinner only; all
-  labels static). CHECK: generate — exactly one spinner, no "…" anywhere.
-- `[T47]` No serif→monospace font jump when generation finishes. CHECK: the
-  finished answer stays in the literary serif.
-- `[T48]` "Links" chip row (tap-friendly crosslinks). CHECK on the phone:
-  chips open entries / start questions.
-- `[T49]` "Mentioned in" backlinks row. CHECK: open the consciousness entry —
-  the bat entry should appear there (its text says `[[consciousness]]`).
-- `[T37]`+`[T38]` CodeMirror live markdown editor + persistent collapsed
-  Thinking panel. CHECK: edit an answer (live markdown styling, your text
-  tinted), Thinking stays after generation, collapsed.
-- `[T30]`–`[T32]`, `[T35]` Earlier UI tweaks: suggestions don't cover the
-  submit button; thinking collapsed by default; network-error toasts name the
-  step; answers end with References (new generations only — T52 revises the
-  format to academia style).
+_(empty)_
 
 ## Recently shipped
 
+- [x] **User-confirmed 2026-06-14 ("All approved"):** `[T60]` editor blue-tint
+      flicker + scroll-jump fixed (attribution decorations computed inside
+      CodeMirror, atomic with each keystroke); `[T59]` tighter mobile padding
+      (px-3 / 1rem editor inset / 0.75rem card inset below `sm`); `[T58]`
+      background AI generation via `after()` + polling, list spinner + cancel,
+      auto-resume on reload; `[T57]` version-history previewable modal;
+      `[T54]` autosave-on-type; `[T52]` academia-style inline citations;
+      `[T53]` "Shipped ≠ done" lifecycle; `[T56]` versioning with revert;
+      `[T55]` regenerate preserves user text; `[T43]` touch-native `[[topic]]`
+      links; `[T44]` suggestion clicks keep draft; `[T46]` single loading
+      indicator; `[T47]` no serif→mono font jump; `[T48]` Links chip row;
+      `[T49]` "Mentioned in" backlinks; `[T37]`+`[T38]` CodeMirror editor +
+      persistent Thinking panel; `[T30]`–`[T32]`, `[T35]` earlier UI tweaks.
 - [x] `[T45]` Clear-input ✕ button — **user-confirmed 2026-06-12** ("Clear
       button is good").
 - [x] `[T42]` Related row ranks doc-to-doc: `/api/related` accepts `answerId`
