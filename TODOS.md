@@ -13,7 +13,7 @@ someone claimed first — pull and pick another. Stale claims (>30 min, no new
 commits) may be reclaimed. On completion, move the item to "Awaiting
 confirmation" (shipped + verified, pending the user's check, with a one-line
 "how to check"); only the user's confirmation moves it to "Recently shipped".
-**Next free id: T62.**
+**Next free id: T64.**
 
 ## Now
 
@@ -26,6 +26,27 @@ confirmation" (shipped + verified, pending the user's check, with a one-line
   Minimize layout reflow (panel keeps its place across states).
 
 ## Next
+- `[T62]` `unclaimed` — **Smarter automatic cross-references; never invent
+  links to non-existent articles.** Stop auto-generating `[[crosslinks]]` to
+  topics that have no entry — automatic cross-references should connect only
+  EXISTING articles. The hard part: links aren't keyword-identifiable in
+  isolation; resolving a candidate phrase requires database context as we scan.
+  So employ a clever DB-aware search — lean on Mongo's tools (text index,
+  `$search`/Atlas Search if available, aggregation) and embeddings where they
+  help — to find which existing articles a passage should link to. Build it so
+  the algorithm is tunable: a clear, isolated scoring/threshold layer the user
+  can adjust when they spot non-ideal cases, ideally with a way to inspect why
+  a link was/wasn't made. (Relates to existing crosslinks lib + /api/crosslinks
+  + /api/related; unresolved `[[topic]]` chips/decorations likely change.)
+- `[T63]` `unclaimed` — **Two-pass paragraph-by-paragraph regeneration.**
+  Pass 1: split the answer into paragraphs; fully regenerate every paragraph
+  that contains NONE of the user's edits, and fully retain every paragraph that
+  contains ANY user edit. Pass 2: revisit the retained (user-edited) paragraphs
+  and regenerate AROUND the user's edits (the existing weave approach). Must
+  filter out MINOR edits before deciding a paragraph is "user-edited" — fixed
+  punctuation, capitalization, or added whitespace shouldn't count. Goal:
+  higher-quality regeneration that respects user work without freezing whole
+  paragraphs over a typo fix. (Builds on lib/reinject + background regenerate.)
 - `[T50]` `unclaimed` — **Dark-mode + mobile visual review of the CodeMirror
   surface.** The CM theme hardcodes sky tints/primary vars built blind;
   needs a signed-in visual pass (user, or agent-browser if sign-in becomes
