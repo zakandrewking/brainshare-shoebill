@@ -53,11 +53,15 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { attributeText, attributionCounts } from "@/lib/attribution";
 import {
+  findAutoLinks,
+  type AutoLinkCandidate,
+} from "@/lib/autolink";
+import {
   findBacklinks,
   findCrosslinkRanges,
   normalizeTopic,
-  suggestQuestionForTopic,
 } from "@/lib/crosslinks";
+import type { CrosslinkRange } from "@/lib/crosslinks";
 import { findRelatedQuestions } from "@/lib/related";
 import { cn } from "@/lib/utils";
 import { getFirebaseAuth } from "@/lib/firebase/client";
@@ -132,6 +136,11 @@ export function AnswerWorkspace({ user }: { user: User }) {
   // entries cross-link even when the text carries no [[topic]] tokens.
   const [answerRelated, setAnswerRelated] = useState<
     { id: string; question: string }[]
+  >([]);
+  // Database context for automatic cross-references: the other articles plus
+  // their embedding similarity to the open one, fetched when the answer opens.
+  const [autoLinkCandidates, setAutoLinkCandidates] = useState<
+    AutoLinkCandidate[]
   >([]);
   // Revert history for the open answer; null until fetched.
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -231,6 +240,34 @@ export function AnswerWorkspace({ user }: { user: User }) {
     };
   }, [answerId, user]);
 
+  // Fetch the database context for automatic cross-references when the open
+  // answer changes: the other articles and how similar each is to this one.
+  useEffect(() => {
+    if (!answerId) {
+      return;
+    }
+    let stale = false;
+    void (async () => {
+      try {
+        const response = await authenticatedFetch(user, "/api/autolink", {
+          method: "POST",
+          body: JSON.stringify({ answerId }),
+        });
+        if (!response.ok || stale) return;
+        const body = (await response.json()) as {
+          candidates: AutoLinkCandidate[];
+        };
+        setAutoLinkCandidates(body.candidates);
+      } catch (error) {
+        // Auto cross-references are an enhancement; fail silent (no links).
+        console.error(error);
+      }
+    })();
+    return () => {
+      stale = true;
+    };
+  }, [answerId, user]);
+
   const segments = useMemo(
     () => (answer ? attributeText(answer.aiText, currentText) : []),
     [answer, currentText],
@@ -243,29 +280,67 @@ export function AnswerWorkspace({ user }: { user: User }) {
   );
   const semanticCacheRef = useRef(new Map<string, string | null>());
 
-  // Raw [[topic]] ranges, recomputed per keystroke (pure, client-side) so the
-  // editor can show a link resolving the moment it matches a submission.
-  // Lexical matches are instant; semantic ones light up when the lookup lands.
-  const crosslinkRanges = useMemo(() => {
-    // Never let a cached semantic match link an answer to itself.
+  // Legacy [[topic]] ranges from older answers — kept only for the ones that
+  // RESOLVE to an existing article (semantic lookups fill in the rest). We no
+  // longer surface unresolved topics: links must point to articles that exist.
+  const resolvedWikiRanges = useMemo(() => {
+    if (!currentText.includes("[[")) return [];
     const semantic = Object.fromEntries(
       Object.entries(semanticLinks).filter(([, id]) => id !== answer?.id),
     );
     return findCrosslinkRanges(currentText, submissions, {
       excludeId: answer?.id,
       semantic,
-    });
+    }).filter((range) => range.resolved);
   }, [currentText, submissions, answer?.id, semanticLinks]);
 
-  // The answer's [[topics]], deduped, for a tappable chip row — the editor's
-  // ⌘/Ctrl-click navigation has no equivalent on touch devices.
+  // Automatic cross-references to existing articles, computed live from the text
+  // against the database context (see lib/autolink). Pure + instant per
+  // keystroke. Set localStorage.autolinkDebug="1" to inspect link scoring.
+  const autoLinkRanges = useMemo(() => {
+    const links = findAutoLinks(currentText, autoLinkCandidates);
+    if (
+      typeof window !== "undefined" &&
+      window.localStorage?.getItem("autolinkDebug") === "1" &&
+      links.length > 0
+    ) {
+      console.table(
+        links.map((link) => ({
+          phrase: link.target,
+          targetId: link.targetId,
+          score: Number(link.score.toFixed(3)),
+          anchor: link.signals.anchor,
+          lexical: Number(link.signals.lexical.toFixed(3)),
+          similarity: Number(link.signals.similarity.toFixed(3)),
+        })),
+      );
+    }
+    return links;
+  }, [currentText, autoLinkCandidates]);
+
+  // What the editor decorates and the chip row lists: resolved legacy wiki links
+  // plus the automatic ones — all pointing at existing articles. autolink ranges
+  // never overlap [[...]] tokens (see forbiddenRanges), so a simple concat is
+  // safe; the editor sorts decorations.
+  const crosslinkRanges = useMemo<CrosslinkRange[]>(() => {
+    const auto: CrosslinkRange[] = autoLinkRanges.map((link) => ({
+      start: link.start,
+      end: link.end,
+      target: link.target,
+      resolved: true,
+      targetId: link.targetId,
+    }));
+    return [...resolvedWikiRanges, ...auto];
+  }, [resolvedWikiRanges, autoLinkRanges]);
+
+  // Deduped tappable chip row of cross-references — the editor's ⌘/Ctrl-click
+  // navigation has no equivalent on touch devices. Existing articles only.
   const linkChips = useMemo(() => {
     const seen = new Set<string>();
-    const chips: { target: string; targetId?: string }[] = [];
+    const chips: { target: string; targetId: string }[] = [];
     for (const range of crosslinkRanges) {
-      const key = normalizeTopic(range.target);
-      if (!key || seen.has(key)) continue;
-      seen.add(key);
+      if (!range.targetId || seen.has(range.targetId)) continue;
+      seen.add(range.targetId);
       chips.push({ target: range.target, targetId: range.targetId });
     }
     return chips;
@@ -363,6 +438,7 @@ export function AnswerWorkspace({ user }: { user: User }) {
       setStreamingText("");
       setStreamingReasoning("");
       setAnswerRelated([]);
+      setAutoLinkCandidates([]);
       setHistoryOpen(false);
       setVersions(null);
       setPreviewIndex(null);
@@ -491,17 +567,6 @@ export function AnswerWorkspace({ user }: { user: User }) {
     } finally {
       setIsRestoring(false);
     }
-  }
-
-  // A [[topic]] without an entry becomes the seed of one: open a fresh
-  // workspace with a suggested question and focus the ask box, so the
-  // related-questions dropdown immediately offers near-matches.
-  function startQuestionForTopic(topic: string) {
-    startNew();
-    setQuestion(suggestQuestionForTopic(topic));
-    requestAnimationFrame(() => {
-      document.getElementById("question")?.focus();
-    });
   }
 
   async function deleteSubmission(id: string) {
@@ -1110,7 +1175,6 @@ export function AnswerWorkspace({ user }: { user: User }) {
                         openSubmission(match);
                       }
                     }}
-                    onCreateCrosslink={startQuestionForTopic}
                   />
                 )}
                 {linkChips.length > 0 ? (
@@ -1119,35 +1183,25 @@ export function AnswerWorkspace({ user }: { user: User }) {
                       <LinkIcon className="size-3" />
                       Links:
                     </span>
-                    {linkChips.map((chip) =>
-                      chip.targetId ? (
+                    {linkChips.map((chip) => {
+                      const target = submissions.find(
+                        (submission) => submission.id === chip.targetId,
+                      );
+                      const label = target?.question ?? chip.target;
+                      return (
                         <button
-                          key={chip.target}
+                          key={chip.targetId}
                           type="button"
+                          title={`“${chip.target}” → ${label}`}
                           onClick={() => {
-                            const match = submissions.find(
-                              (submission) => submission.id === chip.targetId,
-                            );
-                            if (match) {
-                              openSubmission(match);
-                            }
+                            if (target) openSubmission(target);
                           }}
                           className="text-primary underline decoration-dotted underline-offset-2 hover:decoration-solid"
                         >
-                          {chip.target}
+                          {label}
                         </button>
-                      ) : (
-                        <button
-                          key={chip.target}
-                          type="button"
-                          title="No entry yet — tap to ask about this"
-                          onClick={() => startQuestionForTopic(chip.target)}
-                          className="text-muted-foreground underline decoration-dashed underline-offset-2 hover:text-foreground"
-                        >
-                          {chip.target}&thinsp;+
-                        </button>
-                      ),
-                    )}
+                      );
+                    })}
                   </div>
                 ) : null}
                 {backlinks.length > 0 ? (
