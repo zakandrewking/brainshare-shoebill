@@ -17,13 +17,7 @@ confirmation" (shipped + verified, pending the user's check, with a one-line
 
 ## Now
 
-- `[T61]` `wip:claude-opus-4.8/pf4j@2026-06-14T16:55Z` — **One persistent
-  Thinking panel, one spinner.** Today there are two spinners while thinking and
-  the Thinking panel vanishes once done. Goal: never let panels disappear; show a
-  single spinner. Persist the reasoning/thinking tokens with the answer so the
-  Thinking panel is always present as a collapsed indicator — the SAME component
-  whether generation is in progress, just finished, or loaded fresh later.
-  Minimize layout reflow (panel keeps its place across states).
+_(claim the next item in Next)_
 
 ## Next
 - `[T62]` `unclaimed` — **Smarter automatic cross-references; never invent
@@ -58,7 +52,16 @@ confirmation" (shipped + verified, pending the user's check, with a one-line
 _(Shipped + verified + deployed; pending the user's check. Confirming moves an
 item to Recently shipped; a problem report moves it back to Now.)_
 
-_(empty)_
+- `[T61]` One persistent Thinking panel + single spinner; reasoning persisted.
+  The answer card now shows ONE collapsed "Thinking" indicator (the same
+  component while generating, just-finished, or loaded later) holding the only
+  spinner; the separate "Generating" card is gone, so no double spinner and no
+  card swap. Reasoning is captured by the background job and saved on the
+  answer. CHECK: generate — exactly one spinner (in the Thinking row), the
+  panel stays put; expand it to read the reasoning; reload the page and the
+  Thinking panel is still there on the finished answer. Note: OpenAI only
+  returns reasoning *summaries* and some orgs must be verified to receive them
+  — if your org isn't, the panel will say "No reasoning was recorded."
 
 ## Recently shipped
 
