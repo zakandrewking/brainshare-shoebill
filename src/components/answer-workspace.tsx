@@ -23,6 +23,7 @@ import { toast } from "sonner";
 import { Streamdown } from "streamdown";
 
 import { LiveMarkdownEditor } from "@/components/live-markdown-editor";
+import { ThinkingPanel } from "@/components/thinking-panel";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -560,15 +561,19 @@ export function AnswerWorkspace({ user }: { user: User }) {
             continue; // transient network error — retry
           }
 
-          // Show partial text as it builds up.
+          // Show partial text + reasoning as they build up.
           if (polled.generatingText) {
             setStreamingText(polled.generatingText);
+          }
+          if (polled.generatingReasoning !== undefined) {
+            setStreamingReasoning(polled.generatingReasoning);
           }
 
           if (polled.generationStatus === "done") {
             setAnswer(polled);
             setCurrentText(polled.currentText);
             setStreamingText("");
+            setStreamingReasoning("");
             setIsSaved(true);
             if (isRegen) toast.success("Answer regenerated.");
             else void loadSubmissions();
@@ -1023,46 +1028,6 @@ export function AnswerWorkspace({ user }: { user: User }) {
           </CardContent>
         </Card>
 
-        {isGenerating || isRegenerating ? (
-          <Card className="[--card-spacing:--spacing(3)] sm:[--card-spacing:--spacing(4)]">
-            <CardHeader>
-              <div className="flex items-center gap-2">
-                {/* The one and only loading indicator while generating. */}
-                <LoaderCircleIcon className="size-4 animate-spin" />
-                <CardTitle>
-                  {streamingText
-                    ? isRegenerating
-                      ? "Regenerating"
-                      : "Writing"
-                    : "Thinking"}
-                </CardTitle>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {streamingReasoning ? (
-                <details className="retro-sunken p-3 text-sm">
-                  <summary className="cursor-pointer font-medium text-muted-foreground">
-                    Thinking
-                  </summary>
-                  <div className="mt-2 whitespace-pre-wrap text-muted-foreground">
-                    {streamingReasoning}
-                  </div>
-                </details>
-              ) : null}
-              {streamingText ? (
-                <div className="retro-sunken literary-prose min-h-40 p-4 sm:p-5">
-                  <Streamdown>{streamingText}</Streamdown>
-                </div>
-              ) : (
-                <div className="retro-sunken flex min-h-40 flex-col items-center justify-center gap-2 p-4 text-sm text-muted-foreground sm:p-5">
-                  <LoaderCircleIcon className="size-5 animate-spin" />
-                  Generating in background…
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        ) : null}
-
         {answer ? (
           <div className="space-y-6">
             <Card className="[--card-spacing:--spacing(3)] sm:[--card-spacing:--spacing(4)]">
@@ -1099,7 +1064,7 @@ export function AnswerWorkspace({ user }: { user: User }) {
                       variant="outline"
                       size="sm"
                       onClick={openHistory}
-                      disabled={isRegenerating}
+                      disabled={isGenerating || isRegenerating}
                     >
                       <HistoryIcon />
                       History
@@ -1108,27 +1073,26 @@ export function AnswerWorkspace({ user }: { user: User }) {
                 </div>
               </CardHeader>
               <CardContent className="space-y-3">
-                {streamingReasoning && !isGenerating && !isRegenerating ? (
-                  <details className="retro-sunken p-3 text-sm">
-                    <summary className="cursor-pointer font-medium text-muted-foreground">
-                      Thinking
-                    </summary>
-                    <div className="mt-2 whitespace-pre-wrap text-muted-foreground">
-                      {streamingReasoning}
-                    </div>
-                  </details>
-                ) : null}
-                {isRegenerating ? (
-                  streamingText ? (
-                    <div className="retro-sunken literary-prose min-h-40 p-4 sm:p-5">
+                {/* One persistent, collapsed Thinking indicator holding the
+                    single spinner — same component in-progress / done / loaded. */}
+                <ThinkingPanel
+                  reasoning={isGenerating || isRegenerating
+                    ? streamingReasoning
+                    : answer.reasoning ?? ""}
+                  active={isGenerating || isRegenerating}
+                />
+                {isGenerating || isRegenerating ? (
+                  <div className="retro-sunken literary-prose min-h-72 p-4 sm:p-5">
+                    {streamingText ? (
                       <Streamdown>{streamingText}</Streamdown>
-                    </div>
-                  ) : (
-                    <div className="retro-sunken flex min-h-40 flex-col items-center justify-center gap-2 p-4 text-sm text-muted-foreground sm:p-5">
-                      <LoaderCircleIcon className="size-5 animate-spin" />
-                      Generating new version in background…
-                    </div>
-                  )
+                    ) : (
+                      <p className="text-muted-foreground">
+                        Your answer will appear here as it’s written. This keeps
+                        running in the background — you can leave this page and
+                        come back.
+                      </p>
+                    )}
+                  </div>
                 ) : (
                   <LiveMarkdownEditor
                     value={currentText}

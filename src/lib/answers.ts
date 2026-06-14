@@ -27,11 +27,14 @@ export type AnswerDocument = {
   // never changes after creation, so the vector is written once per model.
   questionEmbedding?: number[] | null;
   embeddingModel?: string | null;
+  // Persisted reasoning summary ("thinking") for the Thinking panel.
+  reasoning?: string;
   // Bounded revert history (see lib/versioning); excluded from list payloads.
   versions?: AnswerVersion[];
   // Background generation state. Absent or "done" = fully saved.
   generationStatus?: GenerationStatus;
   generatingText?: string;
+  generatingReasoning?: string;
   generatingStartedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
@@ -68,9 +71,13 @@ function serializeAnswer(
     segments: answer.segments,
     provider: answer.provider,
     model: answer.model,
+    ...(answer.reasoning !== undefined ? { reasoning: answer.reasoning } : {}),
     generationStatus: answer.generationStatus,
     ...(includeGeneratingText && answer.generatingText !== undefined
       ? { generatingText: answer.generatingText }
+      : {}),
+    ...(includeGeneratingText && answer.generatingReasoning !== undefined
+      ? { generatingReasoning: answer.generatingReasoning }
       : {}),
     ...(answer.generatingStartedAt
       ? { generatingStartedAt: answer.generatingStartedAt.toISOString() }
@@ -126,6 +133,7 @@ export async function createAnswerGenerating(params: {
     segments: [],
     generationStatus: "generating",
     generatingText: "",
+    generatingReasoning: "",
     generatingStartedAt: now,
     createdAt: now,
     updatedAt: now,
@@ -150,17 +158,18 @@ export async function getAnswer(
   return serializeAnswer(document, true);
 }
 
-/** Update the partial text accumulated so far (polling clients read this). */
-export async function setGeneratingText(
+/** Update the partial text + reasoning accumulated so far (polled by clients). */
+export async function setGeneratingProgress(
   id: string,
   userId: string,
   text: string,
+  reasoning: string,
 ) {
   if (!ObjectId.isValid(id)) return;
   const collection = await answersCollection();
   await collection.updateOne(
     { _id: new ObjectId(id), userId },
-    { $set: { generatingText: text } },
+    { $set: { generatingText: text, generatingReasoning: reasoning } },
   );
 }
 
@@ -183,6 +192,7 @@ export async function completeAnswerGeneration(
   id: string,
   userId: string,
   aiText: string,
+  reasoning: string,
   provider: string,
   model: string,
   questionEmbedding: number[] | null,
@@ -199,6 +209,7 @@ export async function completeAnswerGeneration(
         aiText,
         currentText: aiText,
         segments,
+        reasoning,
         provider,
         model,
         questionEmbedding,
@@ -206,7 +217,11 @@ export async function completeAnswerGeneration(
         generationStatus: "done",
         updatedAt: now,
       },
-      $unset: { generatingText: "", generatingStartedAt: "" },
+      $unset: {
+        generatingText: "",
+        generatingReasoning: "",
+        generatingStartedAt: "",
+      },
     },
   );
 }
@@ -247,6 +262,7 @@ export async function completeAnswerRegeneration(
   userId: string,
   aiText: string,
   currentText: string,
+  reasoning: string,
   provider: string,
   model: string,
 ) {
@@ -261,6 +277,7 @@ export async function completeAnswerRegeneration(
         aiText,
         currentText,
         segments,
+        reasoning,
         provider,
         model,
         questionEmbedding: null,
@@ -268,7 +285,11 @@ export async function completeAnswerRegeneration(
         generationStatus: "done",
         updatedAt: now,
       },
-      $unset: { generatingText: "", generatingStartedAt: "" },
+      $unset: {
+        generatingText: "",
+        generatingReasoning: "",
+        generatingStartedAt: "",
+      },
     },
   );
 }
@@ -281,7 +302,11 @@ export async function failAnswerGeneration(id: string, userId: string) {
     { _id: new ObjectId(id), userId },
     {
       $set: { generationStatus: "error" },
-      $unset: { generatingText: "", generatingStartedAt: "" },
+      $unset: {
+        generatingText: "",
+        generatingReasoning: "",
+        generatingStartedAt: "",
+      },
     },
   );
 }
@@ -297,7 +322,11 @@ export async function cancelAnswerGeneration(
     { _id: new ObjectId(id), userId, generationStatus: "generating" },
     {
       $set: { generationStatus: "cancelled" },
-      $unset: { generatingText: "", generatingStartedAt: "" },
+      $unset: {
+        generatingText: "",
+        generatingReasoning: "",
+        generatingStartedAt: "",
+      },
     },
   );
   return result.matchedCount > 0;
@@ -306,7 +335,17 @@ export async function cancelAnswerGeneration(
 export async function listAnswers(userId: string) {
   const collection = await answersCollection();
   const documents = await collection
-    .find({ userId }, { projection: { versions: 0 } })
+    .find(
+      { userId },
+      {
+        projection: {
+          versions: 0,
+          questionEmbedding: 0,
+          generatingText: 0,
+          generatingReasoning: 0,
+        },
+      },
+    )
     .sort({ updatedAt: -1 })
     .toArray();
 

@@ -16,7 +16,7 @@ import {
   completeAnswerRegeneration,
   failAnswerGeneration,
   getAnswerGenerationStatus,
-  setGeneratingText,
+  setGeneratingProgress,
 } from "@/lib/answers";
 import {
   embeddingInput,
@@ -69,15 +69,19 @@ export async function runBackgroundGeneration({
   const { signal } = controller;
 
   let accumulatedText = "";
+  let accumulatedReasoning = "";
   let lastDbUpdate = 0;
 
-  const flushText = async (force = false) => {
+  const flushProgress = async (force = false) => {
     const now = Date.now();
     if (force || now - lastDbUpdate >= 2000) {
       lastDbUpdate = now;
-      await setGeneratingText(answerId, userId, accumulatedText).catch(
-        console.error,
-      );
+      await setGeneratingProgress(
+        answerId,
+        userId,
+        accumulatedText,
+        accumulatedReasoning,
+      ).catch(console.error);
     }
   };
 
@@ -97,11 +101,21 @@ export async function runBackgroundGeneration({
   try {
     if (provider === "mock") {
       const text = buildMockText(question, userPassages);
+      // Fake reasoning then text so the Thinking panel is exercisable locally.
+      const mockReasoning = `Reading "${question}" closely, weighing a couple of interpretations, and deciding how to frame a clear, honest answer.`;
+      for (const chunk of mockReasoning.match(/.{1,18}(?:\s|$)/g) ?? [
+        mockReasoning,
+      ]) {
+        if (signal.aborted) break;
+        accumulatedReasoning += chunk;
+        await new Promise((resolve) => setTimeout(resolve, 25));
+        await flushProgress();
+      }
       for (const chunk of text.match(/.{1,12}(?:\s|$)/g) ?? [text]) {
         if (signal.aborted) break;
         accumulatedText += chunk;
         await new Promise((resolve) => setTimeout(resolve, 25));
-        await flushText();
+        await flushProgress();
       }
     } else {
       const languageModel =
@@ -125,6 +139,10 @@ export async function runBackgroundGeneration({
                 openai: {
                   reasoningEffort:
                     process.env.OPENAI_REASONING_EFFORT ?? "high",
+                  // Ask the Responses API for a reasoning summary so the
+                  // Thinking panel has something to show (raw reasoning tokens
+                  // are not exposed by OpenAI — only these summaries).
+                  reasoningSummary: "auto",
                   store: false,
                 },
               } satisfies {
@@ -143,7 +161,10 @@ export async function runBackgroundGeneration({
         if (signal.aborted) break;
         if (part.type === "text-delta" && part.text) {
           accumulatedText += part.text;
-          await flushText();
+          await flushProgress();
+        } else if (part.type === "reasoning-delta" && part.text) {
+          accumulatedReasoning += part.text;
+          await flushProgress();
         }
       }
     }
@@ -155,7 +176,7 @@ export async function runBackgroundGeneration({
       return;
     }
 
-    await flushText(true);
+    await flushProgress(true);
 
     if (isRegeneration) {
       const { aiText, currentText } =
@@ -167,6 +188,7 @@ export async function runBackgroundGeneration({
         userId,
         aiText,
         currentText,
+        accumulatedReasoning,
         provider,
         model,
       );
@@ -188,6 +210,7 @@ export async function runBackgroundGeneration({
         answerId,
         userId,
         accumulatedText,
+        accumulatedReasoning,
         provider,
         model,
         questionEmbedding,
