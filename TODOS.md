@@ -17,7 +17,12 @@ confirmation" (shipped + verified, pending the user's check, with a one-line
 
 ## Now
 
-_(claim the next item in Next)_
+- `[T61]` `wip:claude-opus-4.8/pf4j@2026-06-14T17:21Z` — **Thinking panel
+  follow-ups (user feedback).** (1) Add a chevron to the Thinking summary that
+  indicates open/closed state. (2) On regenerate it said "no thinking was done"
+  but the user doubts that — investigate whether reasoning is actually being
+  captured/persisted (prod check), and if OpenAI simply isn't returning a
+  summary, reword so we don't falsely claim no thinking happened.
 
 ## Next
 - `[T62]` `unclaimed` — **Smarter automatic cross-references; never invent
@@ -51,17 +56,6 @@ _(claim the next item in Next)_
 
 _(Shipped + verified + deployed; pending the user's check. Confirming moves an
 item to Recently shipped; a problem report moves it back to Now.)_
-
-- `[T61]` One persistent Thinking panel + single spinner; reasoning persisted.
-  The answer card now shows ONE collapsed "Thinking" indicator (the same
-  component while generating, just-finished, or loaded later) holding the only
-  spinner; the separate "Generating" card is gone, so no double spinner and no
-  card swap. Reasoning is captured by the background job and saved on the
-  answer. CHECK: generate — exactly one spinner (in the Thinking row), the
-  panel stays put; expand it to read the reasoning; reload the page and the
-  Thinking panel is still there on the finished answer. Note: OpenAI only
-  returns reasoning *summaries* and some orgs must be verified to receive them
-  — if your org isn't, the panel will say "No reasoning was recorded."
 
 ## Recently shipped
 
