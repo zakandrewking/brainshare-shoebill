@@ -17,16 +17,9 @@ confirmation" (shipped + verified, pending the user's check, with a one-line
 
 ## Now
 
-- `[T63]` `wip:claude-opus-4.8/pf4j@2026-06-14T17:40Z` — **Two-pass
-  paragraph-by-paragraph regeneration.**
-  Pass 1: split the answer into paragraphs; fully regenerate every paragraph
-  that contains NONE of the user's edits, and fully retain every paragraph that
-  contains ANY user edit. Pass 2: revisit the retained (user-edited) paragraphs
-  and regenerate AROUND the user's edits (the existing weave approach). Must
-  filter out MINOR edits before deciding a paragraph is "user-edited" — fixed
-  punctuation, capitalization, or added whitespace shouldn't count. Goal:
-  higher-quality regeneration that respects user work without freezing whole
-  paragraphs over a typo fix. (Builds on lib/reinject + background regenerate.)
+_(claim the next item in Next/Ideas)_
+
+## Next
 - `[T50]` `unclaimed` — **Dark-mode + mobile visual review of the CodeMirror
   surface.** The CM theme hardcodes sky tints/primary vars built blind;
   needs a signed-in visual pass (user, or agent-browser if sign-in becomes
@@ -38,6 +31,19 @@ confirmation" (shipped + verified, pending the user's check, with a one-line
 _(Shipped + verified + deployed; pending the user's check. Confirming moves an
 item to Recently shipped; a problem report moves it back to Now.)_
 
+- `[T63]` Two-pass paragraph-aware regeneration. Pass 1 fully rewrites the
+  paragraphs you didn't meaningfully edit (holding your edited paragraphs as
+  fixed context); pass 2 reworks your edited paragraphs around your exact words.
+  Minor edits (punctuation/case/whitespace) don't count, so a typo fix won't
+  freeze a paragraph. Falls back to the proven single-pass regenerate on any
+  anomaly, and is reversible via History. NOTE: I made a default call you should
+  confirm — relaxed the one-paragraph rule so NEW answers may use a few
+  paragraphs when warranted (single-paragraph answers gave paragraph-regen
+  nothing to work with). Could NOT live-test the multi-call model behavior from
+  here. CHECK: take a multi-paragraph answer, edit one paragraph, Regenerate —
+  your edited paragraph should keep your words while the others get rewritten;
+  if results look off, tell me and I'll tune the prompts (or revert the
+  one-paragraph relaxation). Pure core has 14 tests.
 - `[T62]` Automatic cross-references now link ONLY existing articles, found by
   a DB-aware algorithm (anchor phrases from each article's title × embedding
   similarity to the open one) — no more links to non-existent topics, and the
