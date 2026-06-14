@@ -13,23 +13,12 @@ someone claimed first — pull and pick another. Stale claims (>30 min, no new
 commits) may be reclaimed. On completion, move the item to "Awaiting
 confirmation" (shipped + verified, pending the user's check, with a one-line
 "how to check"); only the user's confirmation moves it to "Recently shipped".
-**Next free id: T65.**
+**Next free id: T66.**
 
 ## Now
 
-- `[T62]` `wip:claude-opus-4.8/pf4j@2026-06-14T17:26Z` — **Smarter automatic
-  cross-references; never invent links to non-existent articles.** Stop auto-generating `[[crosslinks]]` to
-  topics that have no entry — automatic cross-references should connect only
-  EXISTING articles. The hard part: links aren't keyword-identifiable in
-  isolation; resolving a candidate phrase requires database context as we scan.
-  So employ a clever DB-aware search — lean on Mongo's tools (text index,
-  `$search`/Atlas Search if available, aggregation) and embeddings where they
-  help — to find which existing articles a passage should link to. Build it so
-  the algorithm is tunable: a clear, isolated scoring/threshold layer the user
-  can adjust when they spot non-ideal cases, ideally with a way to inspect why
-  a link was/wasn't made. (Relates to existing crosslinks lib + /api/crosslinks
-  + /api/related; unresolved `[[topic]]` chips/decorations likely change.)
-- `[T63]` `unclaimed` — **Two-pass paragraph-by-paragraph regeneration.**
+- `[T63]` `wip:claude-opus-4.8/pf4j@2026-06-14T17:40Z` — **Two-pass
+  paragraph-by-paragraph regeneration.**
   Pass 1: split the answer into paragraphs; fully regenerate every paragraph
   that contains NONE of the user's edits, and fully retain every paragraph that
   contains ANY user edit. Pass 2: revisit the retained (user-edited) paragraphs
@@ -49,6 +38,19 @@ confirmation" (shipped + verified, pending the user's check, with a one-line
 _(Shipped + verified + deployed; pending the user's check. Confirming moves an
 item to Recently shipped; a problem report moves it back to Now.)_
 
+- `[T62]` Automatic cross-references now link ONLY existing articles, found by
+  a DB-aware algorithm (anchor phrases from each article's title × embedding
+  similarity to the open one) — no more links to non-existent topics, and the
+  "+ create" affordance is gone. New answers are written in plain prose (no
+  `[[ ]]`); old `[[topic]]` tokens still link when they resolve, else render as
+  plain text. Tunable in `lib/autolink.ts` (DEFAULT_AUTOLINK_CONFIG); set
+  `localStorage.autolinkDebug="1"` then open an entry to `console.table` why
+  each link scored as it did. CHECK: open an entry that mentions another
+  entry's topic (e.g. the hard-problem entry → "consciousness"/"Monism") — the
+  word links to that entry and appears in the Links row; a made-up topic in the
+  text does NOT become a link. If a link looks wrong/missing, tell me the case
+  and I'll tune the weights. FOLLOW-UP captured as `[T65]` (backlinks via
+  autolink).
 - `[T61]` One persistent Thinking panel + single spinner; reasoning persisted;
   now with an open/close chevron. CHECK: generate — one spinner in the Thinking
   row, panel holds its place, chevron rotates when you expand it; reload and the
@@ -364,6 +366,12 @@ _(Unscheduled. Promote to Now/Next with a fresh id when ready.)_
   `reasoningSummary: "auto"` actually streams text; (b) switch the default model
   to a provider that exposes reasoning (e.g. Anthropic extended thinking — the
   background job already wires `thinking` for `anthropic`). Decide + act.
+- `[T65]` `unclaimed` — **Backlinks via autolink.** "Mentioned in" still relies
+  on legacy `[[topic]]` tokens (findBacklinks); new plain-prose answers won't
+  generate them. Recompute backlinks the same DB-aware way as T62 (this entry's
+  anchors found in other entries' text, similarity-gated). Also clean up the now
+  dead `[[ ]]` instruction in `lib/ai.ts` (unused since T58) and the unused
+  `suggestQuestionForTopic`/`resolveCrosslinks` if nothing else needs them.
 - `[T51]` `unclaimed` — **Full-text search across answers** in the
   Submissions sheet (client-side over loaded texts first; hybrid later).
 - `[T29]` `unclaimed` — **GitHub OAuth app name typo: "Brainshaire".** The
