@@ -13,20 +13,12 @@ someone claimed first — pull and pick another. Stale claims (>30 min, no new
 commits) may be reclaimed. On completion, move the item to "Awaiting
 confirmation" (shipped + verified, pending the user's check, with a one-line
 "how to check"); only the user's confirmation moves it to "Recently shipped".
-**Next free id: T64.**
+**Next free id: T65.**
 
 ## Now
 
-- `[T61]` `wip:claude-opus-4.8/pf4j@2026-06-14T17:21Z` — **Thinking panel
-  follow-ups (user feedback).** (1) Add a chevron to the Thinking summary that
-  indicates open/closed state. (2) On regenerate it said "no thinking was done"
-  but the user doubts that — investigate whether reasoning is actually being
-  captured/persisted (prod check), and if OpenAI simply isn't returning a
-  summary, reword so we don't falsely claim no thinking happened.
-
-## Next
-- `[T62]` `unclaimed` — **Smarter automatic cross-references; never invent
-  links to non-existent articles.** Stop auto-generating `[[crosslinks]]` to
+- `[T62]` `wip:claude-opus-4.8/pf4j@2026-06-14T17:26Z` — **Smarter automatic
+  cross-references; never invent links to non-existent articles.** Stop auto-generating `[[crosslinks]]` to
   topics that have no entry — automatic cross-references should connect only
   EXISTING articles. The hard part: links aren't keyword-identifiable in
   isolation; resolving a candidate phrase requires database context as we scan.
@@ -56,6 +48,15 @@ confirmation" (shipped + verified, pending the user's check, with a one-line
 
 _(Shipped + verified + deployed; pending the user's check. Confirming moves an
 item to Recently shipped; a problem report moves it back to Now.)_
+
+- `[T61]` One persistent Thinking panel + single spinner; reasoning persisted;
+  now with an open/close chevron. CHECK: generate — one spinner in the Thinking
+  row, panel holds its place, chevron rotates when you expand it; reload and the
+  panel persists on the finished answer. NOTE on "no thinking": prod check
+  confirmed the reasoning field is saved but EMPTY — OpenAI only returns a
+  reasoning *summary* for **verified accounts**, so the model is still reasoning
+  (high effort), it just isn't returning visible summary text. See `[T64]` to
+  actually surface summaries.
 
 ## Recently shipped
 
@@ -357,6 +358,12 @@ item to Recently shipped; a problem report moves it back to Now.)_
 
 _(Unscheduled. Promote to Now/Next with a fresh id when ready.)_
 
+- `[T64]` `unclaimed` — **Surface real reasoning summaries.** Prod writes an
+  empty reasoning field because OpenAI only returns reasoning summaries to
+  **verified org accounts**. Options: (a) USER verifies the OpenAI org so
+  `reasoningSummary: "auto"` actually streams text; (b) switch the default model
+  to a provider that exposes reasoning (e.g. Anthropic extended thinking — the
+  background job already wires `thinking` for `anthropic`). Decide + act.
 - `[T51]` `unclaimed` — **Full-text search across answers** in the
   Submissions sheet (client-side over loaded texts first; hybrid later).
 - `[T29]` `unclaimed` — **GitHub OAuth app name typo: "Brainshaire".** The
