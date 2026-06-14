@@ -4,7 +4,7 @@ import { NextResponse } from "next/server";
 import { markAnswerRegenerating } from "@/lib/answers";
 import { getGenerationConfig } from "@/lib/ai";
 import { AuthError, requireAuthorizedUser } from "@/lib/auth";
-import { runBackgroundGeneration, getUserPassagesFromDoc } from "@/lib/generation";
+import { runBackgroundRegeneration } from "@/lib/generation";
 
 export const runtime = "nodejs";
 
@@ -23,15 +23,14 @@ export async function POST(
     }
 
     const { provider, model } = getGenerationConfig();
-    const userPassages = getUserPassagesFromDoc(existing.segments ?? []);
 
     after(async () => {
-      await runBackgroundGeneration({
+      await runBackgroundRegeneration({
         answerId: id,
         userId: user.uid,
         question: existing.question,
-        userPassages,
-        isRegeneration: true,
+        aiText: existing.aiText,
+        currentText: existing.currentText,
       });
     });
 
