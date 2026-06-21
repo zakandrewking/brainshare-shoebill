@@ -15,7 +15,6 @@ import {
   RefreshCwIcon,
   SearchIcon,
   SendIcon,
-  SparklesIcon,
   Trash2Icon,
   XCircleIcon,
   XIcon,
@@ -797,6 +796,18 @@ export function AnswerWorkspace({ user }: { user: User }) {
 
   async function generate(explicitQuestion?: string) {
     const trimmedQuestion = (explicitQuestion ?? question).trim();
+    // Empty field + a hinted suggestion → run the hint (the placeholder is
+    // what you get if you don't type). Routes through submitSuggestion so the
+    // suggestion is marked used and the pool refills.
+    if (!explicitQuestion && trimmedQuestion.length < 3) {
+      const hint = !answer ? suggestions[0] : undefined;
+      if (hint) {
+        submitSuggestion(hint);
+        return;
+      }
+      toast.error("Ask a slightly longer question.");
+      return;
+    }
     if (trimmedQuestion.length < 3) {
       toast.error("Ask a slightly longer question.");
       return;
@@ -1082,7 +1093,11 @@ export function AnswerWorkspace({ user }: { user: User }) {
                 onFocus={() => setQuestionFocused(true)}
                 // Delay so a click on a suggestion lands before it unmounts.
                 onBlur={() => setTimeout(() => setQuestionFocused(false), 120)}
-                placeholder="For example: Does the universe have meaning, or do we give it one?"
+                placeholder={
+                  !answer && suggestions[0]
+                    ? suggestions[0].text
+                    : "For example: Does the universe have meaning, or do we give it one?"
+                }
                 className="min-h-28 resize-y pr-10 text-base"
                 disabled={isGenerating}
                 onKeyDown={(event) => {
@@ -1113,6 +1128,20 @@ export function AnswerWorkspace({ user }: { user: User }) {
                   }}
                 >
                   <XIcon />
+                </Button>
+              ) : !answer && !isGenerating && suggestions[0] ? (
+                // The empty-field hint is a real suggestion: shuffle to a
+                // different one. (Submitting it = Generate on the empty field.)
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label="Show a different suggestion"
+                  title="Show a different suggestion"
+                  className="absolute top-2 right-2 size-7 text-muted-foreground"
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={() => dismissSuggestion(suggestions[0].id)}
+                >
+                  <RefreshCwIcon />
                 </Button>
               ) : null}
               {showRelated ? (
@@ -1160,40 +1189,6 @@ export function AnswerWorkspace({ user }: { user: User }) {
             </div>
           </CardContent>
         </Card>
-
-        {!answer && !isGenerating && suggestions.length > 0 ? (
-          <div className="space-y-2">
-            <div className="flex items-center gap-1.5 px-1 text-xs font-medium text-muted-foreground">
-              <SparklesIcon className="size-3.5" />
-              Starter questions — tap one to explore
-            </div>
-            <div className="grid gap-2 sm:grid-cols-2">
-              {suggestions.map((suggestion) => (
-                <div
-                  key={suggestion.id}
-                  className="retro-raised flex items-center gap-1 bg-popover"
-                >
-                  <button
-                    type="button"
-                    onClick={() => submitSuggestion(suggestion)}
-                    className="literary-prose min-w-0 flex-1 px-4 py-3 text-left text-sm hover:bg-accent hover:text-accent-foreground"
-                  >
-                    {suggestion.text}
-                  </button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    aria-label="Dismiss suggestion"
-                    className="mr-1 size-7 shrink-0"
-                    onClick={() => dismissSuggestion(suggestion.id)}
-                  >
-                    <XIcon />
-                  </Button>
-                </div>
-              ))}
-            </div>
-          </div>
-        ) : null}
 
         {answer ? (
           <div className="space-y-6">
