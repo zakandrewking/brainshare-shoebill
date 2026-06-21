@@ -15,6 +15,7 @@ import {
   RefreshCwIcon,
   SearchIcon,
   SendIcon,
+  SparklesIcon,
   Trash2Icon,
   XCircleIcon,
   XIcon,
@@ -149,6 +150,11 @@ export function AnswerWorkspace({ user }: { user: User }) {
   const [previewIndex, setPreviewIndex] = useState<number | null>(null);
   const [isRestoring, setIsRestoring] = useState(false);
   const [submissions, setSubmissions] = useState<SerializedAnswer[]>([]);
+  // AI-generated starter questions for the blank workspace, kept warm by the
+  // server-side pool so they appear instantly.
+  const [suggestions, setSuggestions] = useState<
+    { id: string; text: string }[]
+  >([]);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [questionFocused, setQuestionFocused] = useState(false);
   // Mirror submissions for the popstate handler, which reads the latest list
@@ -420,6 +426,66 @@ export function AnswerWorkspace({ user }: { user: User }) {
       return [];
     }
   }, [user]);
+
+  // Fetch the ready starter suggestions. Returns the count so the warm-up
+  // effect can retry while the pool is still filling on a cold start.
+  const loadSuggestions = useCallback(async () => {
+    try {
+      const response = await authenticatedFetch(user, "/api/suggestions");
+      if (!response.ok) return 0;
+      const body = (await response.json()) as {
+        suggestions: { id: string; text: string }[];
+      };
+      setSuggestions(body.suggestions);
+      return body.suggestions.length;
+    } catch (error) {
+      console.error(error);
+      return 0;
+    }
+  }, [user]);
+
+  // Warm the pool on mount; if it's empty (first-ever load), the GET triggers a
+  // background refill — retry a few times to pick up that first batch. After
+  // that the pool stays full, so later visits show suggestions instantly.
+  useEffect(() => {
+    let cancelled = false;
+    let attempts = 0;
+    const tick = async () => {
+      if (cancelled) return;
+      const count = await loadSuggestions();
+      attempts += 1;
+      if (!cancelled && count === 0 && attempts < 4) {
+        setTimeout(tick, 4000);
+      }
+    };
+    void tick();
+    return () => {
+      cancelled = true;
+    };
+  }, [loadSuggestions]);
+
+  // Submit a suggestion in one tap: mark it used (fire-and-forget) and generate.
+  function submitSuggestion(suggestion: { id: string; text: string }) {
+    setSuggestions((previous) =>
+      previous.filter((item) => item.id !== suggestion.id),
+    );
+    void authenticatedFetch(user, "/api/suggestions", {
+      method: "POST",
+      body: JSON.stringify({ action: "use", id: suggestion.id }),
+    }).catch((error) => console.error(error));
+    void generate(suggestion.text);
+  }
+
+  // Dismiss a suggestion: drop it locally, tell the server (which refills), and
+  // pick up the replacement shortly.
+  function dismissSuggestion(id: string) {
+    setSuggestions((previous) => previous.filter((item) => item.id !== id));
+    void authenticatedFetch(user, "/api/suggestions", {
+      method: "POST",
+      body: JSON.stringify({ action: "dismiss", id }),
+    }).catch((error) => console.error(error));
+    setTimeout(() => void loadSuggestions(), 5000);
+  }
 
   // Load only the submission state (no URL navigation). Used when reconciling
   // the open answer with the `?a=<id>` param on mount and on back/forward.
@@ -729,12 +795,14 @@ export function AnswerWorkspace({ user }: { user: User }) {
     }
   }
 
-  async function generate() {
-    const trimmedQuestion = question.trim();
+  async function generate(explicitQuestion?: string) {
+    const trimmedQuestion = (explicitQuestion ?? question).trim();
     if (trimmedQuestion.length < 3) {
       toast.error("Ask a slightly longer question.");
       return;
     }
+    // Reflect a one-tap suggestion in the box so the user sees what's running.
+    if (explicitQuestion) setQuestion(explicitQuestion);
 
     setIsGenerating(true);
     setAnswer(null);
@@ -1083,7 +1151,7 @@ export function AnswerWorkspace({ user }: { user: User }) {
             <div className="flex items-center justify-end gap-3">
               <Button
                 size="lg"
-                onClick={generate}
+                onClick={() => void generate()}
                 disabled={isGenerating}
               >
                 <SendIcon />
@@ -1092,6 +1160,40 @@ export function AnswerWorkspace({ user }: { user: User }) {
             </div>
           </CardContent>
         </Card>
+
+        {!answer && !isGenerating && suggestions.length > 0 ? (
+          <div className="space-y-2">
+            <div className="flex items-center gap-1.5 px-1 text-xs font-medium text-muted-foreground">
+              <SparklesIcon className="size-3.5" />
+              Starter questions — tap one to explore
+            </div>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {suggestions.map((suggestion) => (
+                <div
+                  key={suggestion.id}
+                  className="retro-raised flex items-center gap-1 bg-popover"
+                >
+                  <button
+                    type="button"
+                    onClick={() => submitSuggestion(suggestion)}
+                    className="literary-prose min-w-0 flex-1 px-4 py-3 text-left text-sm hover:bg-accent hover:text-accent-foreground"
+                  >
+                    {suggestion.text}
+                  </button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label="Dismiss suggestion"
+                    className="mr-1 size-7 shrink-0"
+                    onClick={() => dismissSuggestion(suggestion.id)}
+                  >
+                    <XIcon />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : null}
 
         {answer ? (
           <div className="space-y-6">
