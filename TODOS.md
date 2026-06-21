@@ -17,16 +17,7 @@ confirmation" (shipped + verified, pending the user's check, with a one-line
 
 ## Now
 
-- `[T66]` `wip:claude-opus-4.8/op66@2026-06-21T20:43Z` — **AI-generated
-  homepage starter suggestions, kept warm.** On the blank/new workspace, show
-  a few AI-generated starter questions the user can submit in one tap or
-  clear/dismiss. Don't make the user wait: keep a small server-side POOL of
-  pre-generated suggestions per user, refilled in the background (Next
-  `after()`), so the homepage shows ready ones instantly. SAFETY: batch
-  generation (one cheap AI call yields several suggestions), only refill when
-  the pool drops below target, never exceed a per-user/day generation-call
-  budget, and debounce refills. Suggestions are informed by existing entries
-  (novel, non-duplicate) so they feel connected.
+_(claim the next item in Next/Ideas)_
 
 ## Next
 - `[T50]` `unclaimed` — **Dark-mode + mobile visual review of the CodeMirror
@@ -39,6 +30,19 @@ confirmation" (shipped + verified, pending the user's check, with a one-line
 
 _(Shipped + verified + deployed; pending the user's check. Confirming moves an
 item to Recently shipped; a problem report moves it back to Now.)_
+
+- `[T66]` AI-generated homepage starter suggestions, kept warm. The blank
+  workspace shows a few AI-written starter questions; tap one to generate in
+  one click, or dismiss it with the ✕. A server-side pool keeps them ready so
+  there's no wait — GET returns the ready pool instantly and tops it up in the
+  background. TOKEN SAFETY (verified live): batch generation (one low-reasoning
+  call yields ~5), refill only when the pool drops below target (4), an atomic
+  per-user/day cap (8 calls) + 15s debounce enforced in the DB so concurrent
+  requests can't double-spend. Mock provider seeds deterministic suggestions
+  for `dev:mock`. Verified on prod: GET returns 4 ready, dismiss→200, bad
+  request→400, unauthenticated→401. 11 new tests (111 total). CHECK: open the
+  homepage with no answer selected — a "Starter questions" grid appears; tap
+  one to explore it, or ✕ to dismiss (a fresh one replaces it shortly).
 
 ## Recently shipped
 
