@@ -13,11 +13,17 @@ someone claimed first — pull and pick another. Stale claims (>30 min, no new
 commits) may be reclaimed. On completion, move the item to "Awaiting
 confirmation" (shipped + verified, pending the user's check, with a one-line
 "how to check"); only the user's confirmation moves it to "Recently shipped".
-**Next free id: T67.**
+**Next free id: T68.**
 
 ## Now
 
-_(claim the next item in Next/Ideas)_
+- `[T67]` `wip:claude-opus-4.8/op66@2026-06-21T21:05Z` — **(refines T66 per
+  user) Show only ONE suggestion, as a hint in the main input.** Replace the
+  grid of starter cards with a single suggestion surfaced as the question
+  textarea's placeholder. Keep it easy to submit (clicking Generate on an
+  empty field runs the hinted suggestion) and easy to clear (a small shuffle
+  control in the input swaps to a different one). Still pooled/warm/budgeted
+  from T66; just one shown at a time.
 
 ## Next
 - `[T50]` `unclaimed` — **Dark-mode + mobile visual review of the CodeMirror
