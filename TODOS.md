@@ -13,11 +13,20 @@ someone claimed first — pull and pick another. Stale claims (>30 min, no new
 commits) may be reclaimed. On completion, move the item to "Awaiting
 confirmation" (shipped + verified, pending the user's check, with a one-line
 "how to check"); only the user's confirmation moves it to "Recently shipped".
-**Next free id: T66.**
+**Next free id: T67.**
 
 ## Now
 
-_(claim the next item in Next/Ideas)_
+- `[T66]` `wip:claude-opus-4.8/op66@2026-06-21T20:43Z` — **AI-generated
+  homepage starter suggestions, kept warm.** On the blank/new workspace, show
+  a few AI-generated starter questions the user can submit in one tap or
+  clear/dismiss. Don't make the user wait: keep a small server-side POOL of
+  pre-generated suggestions per user, refilled in the background (Next
+  `after()`), so the homepage shows ready ones instantly. SAFETY: batch
+  generation (one cheap AI call yields several suggestions), only refill when
+  the pool drops below target, never exceed a per-user/day generation-call
+  budget, and debounce refills. Suggestions are informed by existing entries
+  (novel, non-duplicate) so they feel connected.
 
 ## Next
 - `[T50]` `unclaimed` — **Dark-mode + mobile visual review of the CodeMirror
@@ -31,42 +40,17 @@ _(claim the next item in Next/Ideas)_
 _(Shipped + verified + deployed; pending the user's check. Confirming moves an
 item to Recently shipped; a problem report moves it back to Now.)_
 
-- `[T63]` Two-pass paragraph-aware regeneration. Pass 1 fully rewrites the
-  paragraphs you didn't meaningfully edit (holding your edited paragraphs as
-  fixed context); pass 2 reworks your edited paragraphs around your exact words.
-  Minor edits (punctuation/case/whitespace) don't count, so a typo fix won't
-  freeze a paragraph. Falls back to the proven single-pass regenerate on any
-  anomaly, and is reversible via History. NOTE: I made a default call you should
-  confirm — relaxed the one-paragraph rule so NEW answers may use a few
-  paragraphs when warranted (single-paragraph answers gave paragraph-regen
-  nothing to work with). Could NOT live-test the multi-call model behavior from
-  here. CHECK: take a multi-paragraph answer, edit one paragraph, Regenerate —
-  your edited paragraph should keep your words while the others get rewritten;
-  if results look off, tell me and I'll tune the prompts (or revert the
-  one-paragraph relaxation). Pure core has 14 tests.
-- `[T62]` Automatic cross-references now link ONLY existing articles, found by
-  a DB-aware algorithm (anchor phrases from each article's title × embedding
-  similarity to the open one) — no more links to non-existent topics, and the
-  "+ create" affordance is gone. New answers are written in plain prose (no
-  `[[ ]]`); old `[[topic]]` tokens still link when they resolve, else render as
-  plain text. Tunable in `lib/autolink.ts` (DEFAULT_AUTOLINK_CONFIG); set
-  `localStorage.autolinkDebug="1"` then open an entry to `console.table` why
-  each link scored as it did. CHECK: open an entry that mentions another
-  entry's topic (e.g. the hard-problem entry → "consciousness"/"Monism") — the
-  word links to that entry and appears in the Links row; a made-up topic in the
-  text does NOT become a link. If a link looks wrong/missing, tell me the case
-  and I'll tune the weights. FOLLOW-UP captured as `[T65]` (backlinks via
-  autolink).
-- `[T61]` One persistent Thinking panel + single spinner; reasoning persisted;
-  now with an open/close chevron. CHECK: generate — one spinner in the Thinking
-  row, panel holds its place, chevron rotates when you expand it; reload and the
-  panel persists on the finished answer. NOTE on "no thinking": prod check
-  confirmed the reasoning field is saved but EMPTY — OpenAI only returns a
-  reasoning *summary* for **verified accounts**, so the model is still reasoning
-  (high effort), it just isn't returning visible summary text. See `[T64]` to
-  actually surface summaries.
-
 ## Recently shipped
+
+- [x] **User-confirmed 2026-06-21 ("They all work"):** `[T63]` two-pass
+      paragraph-aware regeneration (edited paragraphs keep your words, the rest
+      get rewritten; minor edits don't freeze a paragraph; single-pass
+      fallback; NEW answers may use a few paragraphs); `[T62]` DB-aware
+      automatic cross-references that link ONLY existing articles (no
+      non-existent topics; tunable in `lib/autolink.ts`); `[T61]` one
+      persistent Thinking panel + single spinner with open/close chevron,
+      reasoning persisted (empty in prod until the OpenAI org is verified —
+      see `[T64]`).
 
 - [x] **User-confirmed 2026-06-14 ("All approved"):** `[T60]` editor blue-tint
       flicker + scroll-jump fixed (attribution decorations computed inside
