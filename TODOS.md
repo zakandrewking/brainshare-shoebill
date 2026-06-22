@@ -17,31 +17,28 @@ confirmation" (shipped + verified, pending the user's check, with a one-line
 
 ## Now
 
-- `[T70]` `wip:claude-opus-4.8/gnu7@2026-06-22T00:00Z` — **Submissions
-  disappeared; need graceful DB/backend-down error messaging.** User reports all
-  submissions vanished (login still works). FIRST: check whether prod data is
-  actually gone (query `/api/answers` with the service token) vs. a transient
-  frontend/fetch failure. THEN: when the DB or backend is unreachable, the
-  Submissions list + workspace must show a clear, friendly error state (not an
-  empty list that looks like data loss). Distinguish "no entries yet" (empty)
-  from "couldn't load your entries" (error + retry).
-- `[T69]` `unclaimed` — **Empty "Links:" / "Related:" blocks look bad on new
-  articles.** When an article has no cross-links or no related entries, the
-  Links: and Related: sections render as big empty blocks. Hide each section (or
-  show a subtle inline placeholder) when it has nothing to show.
 - `[T68]` `wip:claude-opus-4.8/gnu7@2026-06-22T00:00Z` — **Idea-based article
-  linking (replace word-anchored autolink).** Link articles on *ideas/claims*,
-  not on shared words: "life" appearing in prose must NOT link to "a life worth
-  living", but an article that says phenomenal consciousness is hard to define
-  SHOULD link to one about definitions of it — even with zero vocabulary
-  overlap. May extend an article's text so a natural link anchor exists. OK to
-  drop existing poor (word-anchored) links. Plan: (1) LLM pass extracts a
-  one-line *thesis* + a few *ideas/claims* per article, embedded; (2) link =
-  idea→thesis semantic recall + LLM judge that confirms the genuine connection
-  and picks/creates the anchor; (3) persist idea-links via a background re-link
-  pass on save + a corpus backfill; (4) retire `autolink.ts` word anchoring.
+  linking — code complete; BLOCKED on the DB outage (T70-infra) for the corpus
+  backfill + live verification.** Shipped: idea-relink pass (`lib/ideas.ts` pure
+  core + 14 tests; `lib/generation.ts` `runRelink`/`relinkForGeneration`;
+  `POST /api/relink`; `scripts/relink-all.mjs` backfill); links are emitted as
+  `[[Exact Title|anchor]]` tokens the existing renderer resolves; user passages
+  protected via `{{n}}` placeholders (`placeholderizeUserSegments`); generation +
+  regeneration relink before persisting; word-anchored `autolink` retired
+  (lib/route/test deleted, workspace rewired). typecheck/lint/build green, 116
+  tests pass. REMAINING when Atlas is back: run the backfill
+  (`SERVICE_API_TOKEN=… node scripts/relink-all.mjs`) and a signed-in visual
+  check that links read naturally and are idea- not word-based.
 
 ## Next
+- `[T69]` `unclaimed` — **Empty "Links:" / "Related:" blocks look bad on new
+  articles.** Investigated: the Links:/Related:/Mentioned-in rows in
+  `answer-workspace.tsx` are ALREADY conditionally rendered (`.length > 0`), so
+  they should not show when empty — the empty blocks the user saw were likely
+  the now-removed autolink loading state, or the rendered-editor min-height well
+  under short answers. NEEDS a live screenshot/repro (blocked: DB down, can't
+  sign in) to fix the right element. Ask the user for a screenshot when Atlas is
+  back.
 - `[T50]` `unclaimed` — **Dark-mode + mobile visual review of the CodeMirror
   surface.** The CM theme hardcodes sky tints/primary vars built blind;
   needs a signed-in visual pass (user, or agent-browser if sign-in becomes
@@ -53,6 +50,19 @@ confirmation" (shipped + verified, pending the user's check, with a one-line
 _(Shipped + verified + deployed; pending the user's check. Confirming moves an
 item to Recently shipped; a problem report moves it back to Now.)_
 
+- `[T70]` Graceful DB/backend-down error state. ROOT CAUSE of "submissions
+  disappeared": the Atlas cluster is unreachable — prod `/api/answers` returns
+  500 after a 30s timeout; runtime log shows `MongoServerSelectionError`
+  (`ReplicaSetNoPrimary`, TLS alert 80) across all 3 shard nodes of
+  `atlas-1ondp4-shard-0`. **Data is NOT lost** — the DB is down (paused/
+  restarting/overloaded). USER ACTION: resume/check the cluster in the Atlas
+  console (project `6a2a2fac94fa5609d018973c`). CODE shipped: `loadSubmissions`
+  no longer swallows failures into an empty list (which looked like data loss) —
+  it tracks loading/ready/error, never blanks an already-loaded list, toasts a
+  clear message, and the Submissions sheet shows a distinct "Couldn't load your
+  entries — your work is safe" state with a Try-again button. CHECK (once Atlas
+  is back, or by simulating a 500): the sheet shows the error state + retry, not
+  a bare empty list; a transient blip no longer wipes the visible list.
 - `[T67]` Now only ONE suggestion shows, as a hint in the main input (refines
   T66 per user). The single pooled suggestion is the question box's
   placeholder; clicking "Generate answer" on an empty field runs that hint

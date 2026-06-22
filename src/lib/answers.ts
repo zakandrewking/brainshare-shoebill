@@ -510,6 +510,62 @@ export async function regenerateAnswer(
   });
 }
 
+/**
+ * Apply an idea-relink result: replace the text with the relinked version
+ * (cross-links woven into the prose), recompute attribution from the new
+ * baseline, snapshot the pre-relink state so it stays revertible, and invalidate
+ * the embedding (the text changed, so the stored vector lazily re-embeds).
+ * Returns null when nothing changed (so callers can skip a pointless write).
+ */
+export async function applyRelink(
+  id: string,
+  userId: string,
+  aiText: string,
+  currentText: string,
+) {
+  if (!ObjectId.isValid(id)) {
+    return null;
+  }
+  const collection = await answersCollection();
+  const existing = await collection.findOne({ _id: new ObjectId(id), userId });
+  if (!existing) {
+    return null;
+  }
+  if (existing.aiText === aiText && existing.currentText === currentText) {
+    return serializeAnswer(existing);
+  }
+
+  const updatedAt = new Date();
+  const segments = attributeText(aiText, currentText);
+  await collection.updateOne(
+    { _id: existing._id, userId },
+    {
+      $set: {
+        aiText,
+        currentText,
+        segments,
+        questionEmbedding: null,
+        embeddingModel: null,
+        updatedAt,
+      },
+      $push: {
+        versions: {
+          $each: [snapshotOf(existing, "regenerate", updatedAt)],
+          $slice: -MAX_VERSIONS,
+        },
+      },
+    },
+  );
+
+  return serializeAnswer({
+    ...existing,
+    aiText,
+    currentText,
+    segments,
+    updatedAt,
+  });
+}
+
 export type SerializedAnswerVersion = {
   index: number;
   kind: AnswerVersion["kind"];

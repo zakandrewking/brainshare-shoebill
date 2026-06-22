@@ -25,6 +25,32 @@ export function extractUserPassages(segments: AttributionSegment[]): string[] {
 }
 
 /**
+ * Inverse of {@link weaveUserText}: turn an existing answer (its attribution
+ * segments) into model-ready text where each meaningful user-authored span is
+ * replaced by a `{{n}}` placeholder, returning that text plus the exact passages
+ * in order. Used by the idea-relink pass so the model can rewrite/relink the AI
+ * prose AROUND the author's words without ever seeing — or being able to alter —
+ * them. Short user edits (< minLen chars after trimming, e.g. a pluralization)
+ * stay inline rather than becoming a standalone placeholder.
+ */
+export function placeholderizeUserSegments(
+  segments: AttributionSegment[],
+  minLen = 3,
+): { text: string; passages: string[] } {
+  let text = "";
+  const passages: string[] = [];
+  for (const segment of segments) {
+    if (segment.source === "user" && segment.text.trim().length >= minLen) {
+      passages.push(segment.text);
+      text += `{{${passages.length}}}`;
+    } else {
+      text += segment.text;
+    }
+  }
+  return { text, passages };
+}
+
+/**
  * Replace the model's `{{n}}` placeholders with the user's exact passages.
  *
  * Returns `aiText` (markers stripped — the stored baseline must not contain

@@ -11,11 +11,15 @@ import {
 } from "@ai-sdk/openai";
 import { streamText } from "ai";
 
+import { attributeText } from "@/lib/attribution";
 import {
+  applyRelink,
   completeAnswerGeneration,
   completeAnswerRegeneration,
   failAnswerGeneration,
+  getAnswer,
   getAnswerGenerationStatus,
+  listRelatedCandidates,
   setGeneratingProgress,
 } from "@/lib/answers";
 import {
@@ -23,6 +27,17 @@ import {
   embedQuestions,
   getEmbeddingConfig,
 } from "@/lib/embedding";
+import {
+  buildRelinkPrompt,
+  countLinks,
+  DEFAULT_RELINK_CONFIG,
+  sanitizeLinks,
+  selectRelinkCandidates,
+  type RankedCandidate,
+  type RelinkCandidate,
+} from "@/lib/ideas";
+import { placeholderizeUserSegments } from "@/lib/reinject";
+import { embedWithCandidates } from "@/lib/semantic";
 import {
   SECTION_DELIMITER,
   assembleAnswer,
@@ -41,6 +56,12 @@ const systemPrompt =
 // (which blocks to output, delimiters), so this keeps only the voice + style.
 const reviserSystemPrompt =
   "You are revising parts of an existing philosophical answer. Keep the same contemplative, truth-seeking voice and plain prose (no headings, no bullet points), and keep academia-style parenthetical citations where claims need them. Follow the user's instructions exactly about which blocks to output and how to delimit them.";
+
+// Idea-relink pass: the model weaves cross-links into an existing entry based on
+// shared IDEAS (not shared words). Keeps the entry's voice and meaning; only adds
+// links and the minimal rephrasing needed for them to read naturally.
+const relinkSystemPrompt =
+  "You are an editor weaving idea-based cross-links into an existing encyclopedia-style entry. Preserve the entry's meaning, contemplative voice, plain prose (no headings, no bullet points), academia-style citations, and its 'References:' section. Add a wiki-link only where the entry genuinely engages an idea, claim, or question that another given entry is fundamentally about — a shared word or surface topic is never enough. You may lightly rephrase a sentence so a link reads naturally, but do not otherwise rewrite the entry, and never invent facts or citations. Output only the full entry text.";
 
 function buildPrompt(question: string, userPassages?: string[]): string {
   if (!userPassages || userPassages.length === 0) return question;
@@ -78,12 +99,15 @@ async function streamModel({
   signal,
   onProgress,
   mockText,
+  effort,
 }: {
   system: string;
   prompt: string;
   signal: AbortSignal;
   onProgress: (text: string, reasoning: string) => Promise<void>;
   mockText: string;
+  /** Override the OpenAI reasoning effort (e.g. "low" for editing passes). */
+  effort?: string;
 }): Promise<{ text: string; reasoning: string }> {
   const { provider, model } = getConfig();
   let text = "";
@@ -125,7 +149,8 @@ async function streamModel({
       provider === "openai"
         ? ({
             openai: {
-              reasoningEffort: process.env.OPENAI_REASONING_EFFORT ?? "high",
+              reasoningEffort:
+                effort ?? process.env.OPENAI_REASONING_EFFORT ?? "high",
               reasoningSummary: "auto",
               store: false,
             },
@@ -223,10 +248,26 @@ export async function runBackgroundGeneration({
     }
     await job.flushNow();
 
+    // Weave idea-based cross-links into the prose before persisting, so the
+    // stored baseline ships with its links. A brand-new answer has no user
+    // edits yet, so aiText === currentText here.
+    const relinked = await relinkForGeneration({
+      userId,
+      answerId,
+      question,
+      aiText: text,
+      currentText: text,
+      signal: job.signal,
+    });
+    if (job.signal.aborted) return;
+    const finalText = relinked.aiText;
+
     let questionEmbedding: number[] | null = null;
     let embeddingModel: string | null = null;
     try {
-      const embeddings = await embedQuestions([embeddingInput(question, text)]);
+      const embeddings = await embedQuestions([
+        embeddingInput(question, finalText),
+      ]);
       if (embeddings) {
         questionEmbedding = embeddings[0];
         embeddingModel = getEmbeddingConfig().model;
@@ -238,7 +279,7 @@ export async function runBackgroundGeneration({
     await completeAnswerGeneration(
       answerId,
       userId,
-      text,
+      finalText,
       reasoning,
       provider,
       model,
@@ -445,11 +486,24 @@ export async function runBackgroundRegeneration({
       return;
     }
     await job.flushNow();
+
+    // Re-weave idea-based cross-links into the regenerated text (user passages
+    // are protected with placeholders inside the relink pass).
+    const relinked = await relinkForGeneration({
+      userId,
+      answerId,
+      question,
+      aiText: final.aiText,
+      currentText: final.currentText,
+      signal: job.signal,
+    });
+    if (job.signal.aborted) return;
+
     await completeAnswerRegeneration(
       answerId,
       userId,
-      final.aiText,
-      final.currentText,
+      relinked.aiText,
+      relinked.currentText,
       cumulativeReasoning,
       provider,
       model,
@@ -460,4 +514,207 @@ export async function runBackgroundRegeneration({
   } finally {
     job.stop();
   }
+}
+
+// ---------------------------------------------------------------------------
+// Idea-based relinking
+// ---------------------------------------------------------------------------
+
+/**
+ * Narrow the corpus to the entries worth offering the model as link targets for
+ * `self`: embeds the source (and lazily backfills candidate vectors), then ranks
+ * by embedding recall. Returns [] when there are no candidates or embeddings are
+ * unavailable (relinking then no-ops, leaving the text untouched).
+ */
+async function gatherRelinkCandidates(
+  userId: string,
+  selfId: string,
+  selfQuestion: string,
+  selfText: string,
+): Promise<RankedCandidate[]> {
+  const others = (await listRelatedCandidates(userId)).filter(
+    (candidate) => candidate.id !== selfId && candidate.text.trim().length > 0,
+  );
+  if (others.length === 0) {
+    return [];
+  }
+  const resolved = await embedWithCandidates(
+    userId,
+    [embeddingInput(selfQuestion, selfText)],
+    others,
+  );
+  if (!resolved) {
+    return [];
+  }
+  const selfEmbedding = resolved.queryEmbeddings[0] ?? null;
+  const embeddingById = new Map(
+    resolved.candidates.map((candidate) => [candidate.id, candidate.embedding]),
+  );
+  const relinkCandidates: RelinkCandidate[] = others.map((candidate) => ({
+    id: candidate.id,
+    question: candidate.question,
+    text: candidate.text,
+    embedding: embeddingById.get(candidate.id) ?? candidate.embedding,
+  }));
+  return selectRelinkCandidates(selfEmbedding, relinkCandidates, selfId);
+}
+
+function buildMockRelink(
+  placeholderText: string,
+  candidates: RankedCandidate[],
+): string {
+  // Deterministically link the top candidate so the relink path (sanitize +
+  // weave + render) is exercisable under AI_PROVIDER=mock without spending tokens.
+  if (candidates.length === 0) return placeholderText;
+  return `${placeholderText}\n\nThis connects to the question of [[${candidates[0].question}|a related idea]].`;
+}
+
+/**
+ * Run the idea-relink model pass over one entry. Returns the relinked
+ * `{ aiText, currentText }` when at least one genuine cross-link was added, or
+ * `null` to leave the entry unchanged (no candidates, model declined to link, or
+ * the pass failed). User passages are protected with `{{n}}` placeholders so the
+ * model relinks the AI prose around them without altering the author's words.
+ */
+async function relinkText({
+  question,
+  aiText,
+  currentText,
+  candidates,
+  signal,
+}: {
+  question: string;
+  aiText: string;
+  currentText: string;
+  candidates: RankedCandidate[];
+  signal: AbortSignal;
+}): Promise<{ aiText: string; currentText: string; linkCount: number } | null> {
+  if (candidates.length === 0 || !currentText.trim()) {
+    return null;
+  }
+  const segments = attributeText(aiText, currentText);
+  const { text: placeholderText, passages } =
+    placeholderizeUserSegments(segments);
+
+  const { text } = await streamModel({
+    system: relinkSystemPrompt,
+    prompt: buildRelinkPrompt(
+      question,
+      placeholderText,
+      candidates,
+      DEFAULT_RELINK_CONFIG,
+      passages.length > 0,
+    ),
+    signal,
+    onProgress: async () => {},
+    mockText: buildMockRelink(placeholderText, candidates),
+    effort: "low",
+  });
+  if (signal.aborted || !text.trim()) {
+    return null;
+  }
+
+  const sanitized = sanitizeLinks(
+    text,
+    candidates.map((candidate) => candidate.question),
+    { maxLinks: DEFAULT_RELINK_CONFIG.maxLinks, selfQuestion: question },
+  );
+  // Purely additive: if the pass added no links, discard any incidental rephrase
+  // and keep the original text untouched.
+  if (countLinks(sanitized) === 0) {
+    return null;
+  }
+
+  const woven = weaveUserText(sanitized, passages);
+  return {
+    aiText: woven.aiText,
+    currentText: woven.currentText,
+    linkCount: countLinks(woven.currentText),
+  };
+}
+
+/**
+ * Relink the text of a freshly generated/regenerated answer in place (called
+ * before the answer is persisted, so the stored baseline already carries its
+ * cross-links). Never throws — relinking is an enhancement, so any failure
+ * leaves the original text. Returns the (possibly unchanged) text.
+ */
+async function relinkForGeneration({
+  userId,
+  answerId,
+  question,
+  aiText,
+  currentText,
+  signal,
+}: {
+  userId: string;
+  answerId: string;
+  question: string;
+  aiText: string;
+  currentText: string;
+  signal: AbortSignal;
+}): Promise<{ aiText: string; currentText: string }> {
+  try {
+    const candidates = await gatherRelinkCandidates(
+      userId,
+      answerId,
+      question,
+      currentText,
+    );
+    const relinked = await relinkText({
+      question,
+      aiText,
+      currentText,
+      candidates,
+      signal,
+    });
+    if (relinked) {
+      return { aiText: relinked.aiText, currentText: relinked.currentText };
+    }
+  } catch (error) {
+    console.error("[relinkForGeneration] failed; leaving text as-is:", error);
+  }
+  return { aiText, currentText };
+}
+
+/**
+ * Relink an existing answer on demand (the /api/relink endpoint and the corpus
+ * backfill). Loads the answer, runs the relink pass against the rest of the
+ * corpus, and persists the result (snapshotting the pre-relink state). Returns
+ * the number of links in the result, or null when the answer was not found.
+ */
+export async function runRelink({
+  answerId,
+  userId,
+}: {
+  answerId: string;
+  userId: string;
+}): Promise<{ linkCount: number; changed: boolean } | null> {
+  const answer = await getAnswer(answerId, userId);
+  if (!answer) {
+    return null;
+  }
+  if (!answer.currentText.trim()) {
+    return { linkCount: 0, changed: false };
+  }
+
+  const candidates = await gatherRelinkCandidates(
+    userId,
+    answerId,
+    answer.question,
+    answer.currentText,
+  );
+  const relinked = await relinkText({
+    question: answer.question,
+    aiText: answer.aiText,
+    currentText: answer.currentText,
+    candidates,
+    signal: new AbortController().signal,
+  });
+  if (!relinked) {
+    return { linkCount: countLinks(answer.currentText), changed: false };
+  }
+
+  await applyRelink(answerId, userId, relinked.aiText, relinked.currentText);
+  return { linkCount: relinked.linkCount, changed: true };
 }

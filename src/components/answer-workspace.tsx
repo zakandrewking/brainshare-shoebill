@@ -53,10 +53,6 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { attributeText, attributionCounts } from "@/lib/attribution";
 import {
-  findAutoLinks,
-  type AutoLinkCandidate,
-} from "@/lib/autolink";
-import {
   findBacklinks,
   findCrosslinkRanges,
   normalizeTopic,
@@ -136,11 +132,6 @@ export function AnswerWorkspace({ user }: { user: User }) {
   // entries cross-link even when the text carries no [[topic]] tokens.
   const [answerRelated, setAnswerRelated] = useState<
     { id: string; question: string }[]
-  >([]);
-  // Database context for automatic cross-references: the other articles plus
-  // their embedding similarity to the open one, fetched when the answer opens.
-  const [autoLinkCandidates, setAutoLinkCandidates] = useState<
-    AutoLinkCandidate[]
   >([]);
   // Revert history for the open answer; null until fetched.
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -251,34 +242,6 @@ export function AnswerWorkspace({ user }: { user: User }) {
     };
   }, [answerId, user]);
 
-  // Fetch the database context for automatic cross-references when the open
-  // answer changes: the other articles and how similar each is to this one.
-  useEffect(() => {
-    if (!answerId) {
-      return;
-    }
-    let stale = false;
-    void (async () => {
-      try {
-        const response = await authenticatedFetch(user, "/api/autolink", {
-          method: "POST",
-          body: JSON.stringify({ answerId }),
-        });
-        if (!response.ok || stale) return;
-        const body = (await response.json()) as {
-          candidates: AutoLinkCandidate[];
-        };
-        setAutoLinkCandidates(body.candidates);
-      } catch (error) {
-        // Auto cross-references are an enhancement; fail silent (no links).
-        console.error(error);
-      }
-    })();
-    return () => {
-      stale = true;
-    };
-  }, [answerId, user]);
-
   const segments = useMemo(
     () => (answer ? attributeText(answer.aiText, currentText) : []),
     [answer, currentText],
@@ -305,44 +268,13 @@ export function AnswerWorkspace({ user }: { user: User }) {
     }).filter((range) => range.resolved);
   }, [currentText, submissions, answer?.id, semanticLinks]);
 
-  // Automatic cross-references to existing articles, computed live from the text
-  // against the database context (see lib/autolink). Pure + instant per
-  // keystroke. Set localStorage.autolinkDebug="1" to inspect link scoring.
-  const autoLinkRanges = useMemo(() => {
-    const links = findAutoLinks(currentText, autoLinkCandidates);
-    if (
-      typeof window !== "undefined" &&
-      window.localStorage?.getItem("autolinkDebug") === "1" &&
-      links.length > 0
-    ) {
-      console.table(
-        links.map((link) => ({
-          phrase: link.target,
-          targetId: link.targetId,
-          score: Number(link.score.toFixed(3)),
-          anchor: link.signals.anchor,
-          lexical: Number(link.signals.lexical.toFixed(3)),
-          similarity: Number(link.signals.similarity.toFixed(3)),
-        })),
-      );
-    }
-    return links;
-  }, [currentText, autoLinkCandidates]);
-
-  // What the editor decorates and the chip row lists: resolved legacy wiki links
-  // plus the automatic ones — all pointing at existing articles. autolink ranges
-  // never overlap [[...]] tokens (see forbiddenRanges), so a simple concat is
-  // safe; the editor sorts decorations.
-  const crosslinkRanges = useMemo<CrosslinkRange[]>(() => {
-    const auto: CrosslinkRange[] = autoLinkRanges.map((link) => ({
-      start: link.start,
-      end: link.end,
-      target: link.target,
-      resolved: true,
-      targetId: link.targetId,
-    }));
-    return [...resolvedWikiRanges, ...auto];
-  }, [resolvedWikiRanges, autoLinkRanges]);
+  // What the editor decorates and the chip row lists: the resolved `[[Title|
+  // anchor]]` cross-links woven into the prose by the idea-relink pass (see
+  // lib/ideas + /api/relink). Links are based on shared IDEAS, not shared words.
+  const crosslinkRanges = useMemo<CrosslinkRange[]>(
+    () => resolvedWikiRanges,
+    [resolvedWikiRanges],
+  );
 
   // Deduped tappable chip row of cross-references — the editor's ⌘/Ctrl-click
   // navigation has no equivalent on touch devices. Existing articles only.
@@ -525,7 +457,6 @@ export function AnswerWorkspace({ user }: { user: User }) {
       setStreamingText("");
       setStreamingReasoning("");
       setAnswerRelated([]);
-      setAutoLinkCandidates([]);
       setHistoryOpen(false);
       setVersions(null);
       setPreviewIndex(null);

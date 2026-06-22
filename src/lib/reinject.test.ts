@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { extractUserPassages, weaveUserText } from "@/lib/reinject";
+import {
+  extractUserPassages,
+  placeholderizeUserSegments,
+  weaveUserText,
+} from "@/lib/reinject";
 
 describe("extractUserPassages", () => {
   it("keeps trimmed user segments and drops AI text and tiny edits", () => {
@@ -19,6 +23,38 @@ describe("extractUserPassages", () => {
       source: "user" as const,
     }));
     expect(extractUserPassages(segments)).toHaveLength(20);
+  });
+});
+
+describe("placeholderizeUserSegments", () => {
+  it("replaces meaningful user spans with ordered placeholders", () => {
+    const { text, passages } = placeholderizeUserSegments([
+      { text: "The universe ", source: "ai" },
+      { text: "— as I see it — ", source: "user" },
+      { text: "has no edge.", source: "ai" },
+    ]);
+    expect(text).toBe("The universe {{1}}has no edge.");
+    expect(passages).toEqual(["— as I see it — "]);
+  });
+
+  it("keeps tiny user edits inline rather than as placeholders", () => {
+    const { text, passages } = placeholderizeUserSegments([
+      { text: "edge", source: "ai" },
+      { text: "s", source: "user" }, // pluralization
+    ]);
+    expect(text).toBe("edges");
+    expect(passages).toEqual([]);
+  });
+
+  it("round-trips with weaveUserText to the exact original current text", () => {
+    const segments = [
+      { text: "Fresh thought. ", source: "ai" as const },
+      { text: "my own aside", source: "user" as const },
+      { text: " continues.", source: "ai" as const },
+    ];
+    const { text, passages } = placeholderizeUserSegments(segments);
+    const { currentText } = weaveUserText(text, passages);
+    expect(currentText).toBe("Fresh thought. my own aside continues.");
   });
 });
 
