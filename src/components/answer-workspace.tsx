@@ -149,6 +149,12 @@ export function AnswerWorkspace({ user }: { user: User }) {
   const [previewIndex, setPreviewIndex] = useState<number | null>(null);
   const [isRestoring, setIsRestoring] = useState(false);
   const [submissions, setSubmissions] = useState<SerializedAnswer[]>([]);
+  // How the submissions list last resolved. "error" means the server/DB was
+  // unreachable — distinct from a genuinely empty list — so we can show a clear
+  // "couldn't load" state instead of an empty one that looks like data loss.
+  const [submissionsStatus, setSubmissionsStatus] = useState<
+    "loading" | "ready" | "error"
+  >("loading");
   // AI-generated starter questions for the blank workspace, kept warm by the
   // server-side pool so they appear instantly.
   const [suggestions, setSuggestions] = useState<
@@ -413,16 +419,32 @@ export function AnswerWorkspace({ user }: { user: User }) {
   const loadSubmissions = useCallback(async () => {
     try {
       const response = await authenticatedFetch(user, "/api/answers");
-      if (!response.ok) return [];
+      if (!response.ok) {
+        // Server reachable but the read failed (e.g. the database is down). Keep
+        // whatever list we already had — never blank it out, which would look
+        // like the user's entries vanished — and surface a clear error.
+        setSubmissionsStatus("error");
+        toast.error(
+          "Couldn’t load your entries — the server is temporarily unavailable. Your work is safe.",
+          { id: "load-submissions" },
+        );
+        return null;
+      }
       const body = (await response.json()) as {
         answers: SerializedAnswer[];
       };
       submissionsRef.current = body.answers;
       setSubmissions(body.answers);
+      setSubmissionsStatus("ready");
       return body.answers;
     } catch (error) {
       console.error(error);
-      return [];
+      setSubmissionsStatus("error");
+      toast.error(
+        "Couldn’t reach the server to load your entries. Check your connection and try again.",
+        { id: "load-submissions" },
+      );
+      return null;
     }
   }, [user]);
 
@@ -1021,7 +1043,31 @@ export function AnswerWorkspace({ user }: { user: User }) {
               Open a saved answer or start a new one.
             </SheetDescription>
           </SheetHeader>
-          {submissions.length > 0 ? (
+          {submissionsStatus === "error" && submissions.length === 0 ? (
+            <div className="flex flex-1 flex-col items-center justify-center gap-2 text-center text-sm text-muted-foreground">
+              <p className="font-medium text-foreground">
+                Couldn’t load your entries
+              </p>
+              <p>
+                The server is temporarily unavailable. Your work is safe — this
+                will reappear once the connection is back.
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-1"
+                onClick={() => void loadSubmissions()}
+              >
+                <RefreshCwIcon />
+                Try again
+              </Button>
+            </div>
+          ) : submissionsStatus === "loading" && submissions.length === 0 ? (
+            <div className="flex flex-1 flex-col items-center justify-center gap-2 text-center text-sm text-muted-foreground">
+              <LoaderCircleIcon className="size-5 animate-spin" />
+              <p>Loading your entries…</p>
+            </div>
+          ) : submissions.length > 0 ? (
             <div className="-mx-1 flex-1 space-y-1 overflow-y-auto px-1">
               {submissions.map((submission) => (
                 <div

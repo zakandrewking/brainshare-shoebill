@@ -13,11 +13,33 @@ someone claimed first — pull and pick another. Stale claims (>30 min, no new
 commits) may be reclaimed. On completion, move the item to "Awaiting
 confirmation" (shipped + verified, pending the user's check, with a one-line
 "how to check"); only the user's confirmation moves it to "Recently shipped".
-**Next free id: T68.**
+**Next free id: T71.**
 
 ## Now
 
-_(claim the next item in Next/Ideas)_
+- `[T70]` `wip:claude-opus-4.8/gnu7@2026-06-22T00:00Z` — **Submissions
+  disappeared; need graceful DB/backend-down error messaging.** User reports all
+  submissions vanished (login still works). FIRST: check whether prod data is
+  actually gone (query `/api/answers` with the service token) vs. a transient
+  frontend/fetch failure. THEN: when the DB or backend is unreachable, the
+  Submissions list + workspace must show a clear, friendly error state (not an
+  empty list that looks like data loss). Distinguish "no entries yet" (empty)
+  from "couldn't load your entries" (error + retry).
+- `[T69]` `unclaimed` — **Empty "Links:" / "Related:" blocks look bad on new
+  articles.** When an article has no cross-links or no related entries, the
+  Links: and Related: sections render as big empty blocks. Hide each section (or
+  show a subtle inline placeholder) when it has nothing to show.
+- `[T68]` `wip:claude-opus-4.8/gnu7@2026-06-22T00:00Z` — **Idea-based article
+  linking (replace word-anchored autolink).** Link articles on *ideas/claims*,
+  not on shared words: "life" appearing in prose must NOT link to "a life worth
+  living", but an article that says phenomenal consciousness is hard to define
+  SHOULD link to one about definitions of it — even with zero vocabulary
+  overlap. May extend an article's text so a natural link anchor exists. OK to
+  drop existing poor (word-anchored) links. Plan: (1) LLM pass extracts a
+  one-line *thesis* + a few *ideas/claims* per article, embedded; (2) link =
+  idea→thesis semantic recall + LLM judge that confirms the genuine connection
+  and picks/creates the anchor; (3) persist idea-links via a background re-link
+  pass on save + a corpus backfill; (4) retire `autolink.ts` word anchoring.
 
 ## Next
 - `[T50]` `unclaimed` — **Dark-mode + mobile visual review of the CodeMirror
