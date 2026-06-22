@@ -13,11 +13,11 @@ someone claimed first — pull and pick another. Stale claims (>30 min, no new
 commits) may be reclaimed. On completion, move the item to "Awaiting
 confirmation" (shipped + verified, pending the user's check, with a one-line
 "how to check"); only the user's confirmation moves it to "Recently shipped".
-**Next free id: T68.**
+**Next free id: T69.**
 
 ## Now
 
-_(claim the next item in Next/Ideas)_
+- `[T68]` `wip:claude-sonnet-4-6/ez3v` — **Fix MongoDB connection leak in prod.** `mongodb.ts` only caches the MongoClient promise in non-production, creating a new connection per request in prod — likely causing M0 connection limit alert.
 
 ## Next
 - `[T50]` `unclaimed` — **Dark-mode + mobile visual review of the CodeMirror
