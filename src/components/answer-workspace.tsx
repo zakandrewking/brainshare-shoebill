@@ -1057,7 +1057,7 @@ export function AnswerWorkspace({ user }: { user: User }) {
               type="button"
               aria-label="Drive settings"
               onClick={() => setDriveDialogOpen(true)}
-              className="relative flex shrink-0 cursor-pointer"
+              className="relative flex shrink-0 cursor-pointer rounded-full ring-offset-background transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             >
               <Avatar size="sm">
                 {user.photoURL ? (
