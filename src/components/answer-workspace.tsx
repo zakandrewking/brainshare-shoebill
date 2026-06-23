@@ -5,6 +5,7 @@ import Image from "next/image";
 import { signOut, type User } from "firebase/auth";
 import {
   CheckIcon,
+  CloudIcon,
   CornerUpLeftIcon,
   HistoryIcon,
   LayersIcon,
@@ -66,6 +67,7 @@ import { findRelatedQuestions } from "@/lib/related";
 import { cn } from "@/lib/utils";
 import { getFirebaseAuth } from "@/lib/firebase/client";
 import type { SerializedAnswer } from "@/lib/types";
+import type { DriveStatusResponse } from "@/lib/drive";
 
 async function authenticatedFetch(
   user: User,
@@ -156,6 +158,10 @@ export function AnswerWorkspace({ user }: { user: User }) {
   >([]);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [questionFocused, setQuestionFocused] = useState(false);
+  const [driveStatus, setDriveStatus] = useState<DriveStatusResponse | null>(null);
+  const [driveDialogOpen, setDriveDialogOpen] = useState(false);
+  const [isConnectingDrive, setIsConnectingDrive] = useState(false);
+  const [isDisconnectingDrive, setIsDisconnectingDrive] = useState(false);
   // Mirror submissions for the popstate handler, which reads the latest list
   // without re-subscribing on every change.
   const submissionsRef = useRef<SerializedAnswer[]>([]);
@@ -484,6 +490,60 @@ export function AnswerWorkspace({ user }: { user: User }) {
       body: JSON.stringify({ action: "dismiss", id }),
     }).catch((error) => console.error(error));
     setTimeout(() => void loadSuggestions(), 5000);
+  }
+
+  const loadDriveStatus = useCallback(async () => {
+    try {
+      const response = await authenticatedFetch(user, "/api/drive/status");
+      if (!response.ok) return;
+      const body = (await response.json()) as DriveStatusResponse;
+      setDriveStatus(body);
+    } catch (error) {
+      console.error(error);
+    }
+  }, [user]);
+
+  // Load drive status on mount; handle ?drive_connected / ?drive_error params
+  // returned by the OAuth callback redirect.
+  useEffect(() => {
+    void loadDriveStatus();
+    const params = new URLSearchParams(window.location.search);
+    if (params.has("drive_connected")) {
+      window.history.replaceState({}, "", window.location.pathname);
+      toast.success("Google Drive connected! Your answers will sync automatically.");
+      setDriveDialogOpen(true);
+    } else if (params.has("drive_error")) {
+      window.history.replaceState({}, "", window.location.pathname);
+      toast.error(`Drive connection failed: ${params.get("drive_error")}`);
+    }
+  }, [loadDriveStatus]);
+
+  async function connectDrive() {
+    setIsConnectingDrive(true);
+    try {
+      const res = await authenticatedFetch(user, "/api/drive/connect");
+      if (!res.ok) throw new Error(await readError(res));
+      const { url } = (await res.json()) as { url: string };
+      window.location.href = url;
+    } catch (error) {
+      toast.error(describeActionError(error, "connecting to Drive"));
+      setIsConnectingDrive(false);
+    }
+  }
+
+  async function handleDisconnectDrive() {
+    setIsDisconnectingDrive(true);
+    try {
+      const res = await authenticatedFetch(user, "/api/drive/disconnect", { method: "DELETE" });
+      if (!res.ok) throw new Error(await readError(res));
+      setDriveStatus({ status: "notSetup" });
+      setDriveDialogOpen(false);
+      toast.success("Google Drive disconnected.");
+    } catch (error) {
+      toast.error(describeActionError(error, "disconnecting Drive"));
+    } finally {
+      setIsDisconnectingDrive(false);
+    }
   }
 
   // Load only the submission state (no URL navigation). Used when reconciling
@@ -993,14 +1053,31 @@ export function AnswerWorkspace({ user }: { user: User }) {
               <PlusIcon />
               <span className="hidden sm:inline">New</span>
             </Button>
-            <Avatar size="sm">
-              {user.photoURL ? (
-                <AvatarImage src={user.photoURL} alt={user.displayName ?? ""} />
-              ) : null}
-              <AvatarFallback>
-                {(user.displayName ?? user.email ?? "Z").slice(0, 1)}
-              </AvatarFallback>
-            </Avatar>
+            <button
+              type="button"
+              aria-label="Drive settings"
+              onClick={() => setDriveDialogOpen(true)}
+              className="relative flex shrink-0 cursor-pointer"
+            >
+              <Avatar size="sm">
+                {user.photoURL ? (
+                  <AvatarImage src={user.photoURL} alt={user.displayName ?? ""} />
+                ) : null}
+                <AvatarFallback>
+                  {(user.displayName ?? user.email ?? "Z").slice(0, 1)}
+                </AvatarFallback>
+              </Avatar>
+              {driveStatus && driveStatus.status !== "notSetup" && (
+                <span
+                  className={cn(
+                    "absolute -right-0.5 -bottom-0.5 size-2.5 rounded-full border-2 border-background",
+                    driveStatus.status === "tokenInvalid" && "bg-red-500",
+                    driveStatus.status === "syncing" && "bg-amber-500",
+                    driveStatus.status === "synced" && "bg-green-500",
+                  )}
+                />
+              )}
+            </button>
             <Button
               variant="ghost"
               size="icon"
@@ -1481,6 +1558,70 @@ export function AnswerWorkspace({ user }: { user: User }) {
           </div>
         ) : null}
       </div>
+
+      <Dialog open={driveDialogOpen} onOpenChange={setDriveDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CloudIcon className="size-4" />
+              Google Drive Export
+            </DialogTitle>
+            <DialogDescription>
+              Auto-export all your Q&amp;A to a single markdown file in your
+              Google Drive. It stays in sync whenever you save.
+            </DialogDescription>
+          </DialogHeader>
+          {!driveStatus || driveStatus.status === "notSetup" ? (
+            <div className="flex flex-col gap-3 py-2">
+              <p className="text-sm text-muted-foreground">
+                Connect your Google account to enable automatic backups.
+              </p>
+              <Button onClick={connectDrive} disabled={isConnectingDrive}>
+                {isConnectingDrive ? "Redirecting…" : "Connect Google Drive"}
+              </Button>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-4 py-2">
+              <div className="flex items-center gap-3">
+                <span
+                  className={cn(
+                    "size-3 rounded-full shrink-0",
+                    driveStatus.status === "tokenInvalid" && "bg-red-500",
+                    driveStatus.status === "syncing" && "bg-amber-500",
+                    driveStatus.status === "synced" && "bg-green-500",
+                  )}
+                />
+                <div>
+                  <p className="text-sm font-medium">
+                    {driveStatus.status === "tokenInvalid" &&
+                      "Drive token expired — reconnect to resume syncing"}
+                    {driveStatus.status === "syncing" && "Syncing…"}
+                    {driveStatus.status === "synced" && "Up to date"}
+                  </p>
+                  {driveStatus.lastSyncAt && (
+                    <p className="text-xs text-muted-foreground">
+                      Last synced{" "}
+                      {new Date(driveStatus.lastSyncAt).toLocaleString()}
+                    </p>
+                  )}
+                </div>
+              </div>
+              {driveStatus.status === "tokenInvalid" && (
+                <Button onClick={connectDrive} disabled={isConnectingDrive}>
+                  {isConnectingDrive ? "Redirecting…" : "Reconnect Drive"}
+                </Button>
+              )}
+              <Button
+                variant="outline"
+                onClick={handleDisconnectDrive}
+                disabled={isDisconnectingDrive}
+              >
+                {isDisconnectingDrive ? "Disconnecting…" : "Disconnect Drive"}
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </main>
   );
 }

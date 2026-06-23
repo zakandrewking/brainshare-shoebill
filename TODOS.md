@@ -13,11 +13,12 @@ someone claimed first — pull and pick another. Stale claims (>30 min, no new
 commits) may be reclaimed. On completion, move the item to "Awaiting
 confirmation" (shipped + verified, pending the user's check, with a one-line
 "how to check"); only the user's confirmation moves it to "Recently shipped".
-**Next free id: T69.**
+**Next free id: T70.**
 
 ## Now
 
-- `[T68]` `wip:claude-sonnet-4-6/ez3v` — **Fix MongoDB connection leak in prod.** `mongodb.ts` only caches the MongoClient promise in non-production, creating a new connection per request in prod — likely causing M0 connection limit alert.
+- `[T68]` `wip:claude-sonnet-4-6/ez3v` — **Fix MongoDB connection leak in prod.** (shipped, awaiting deploy confirmation)
+- `[T69]` `wip:claude-sonnet-4-6/ez3v` — **Google Drive auto-export + profile badge.** OAuth2 flow to store refresh token; background sync exports all answers to a single markdown file in Drive; profile avatar gets a small colored dot: absent = not set up, red = token broken, orange = needs sync, green = all synced.
 
 ## Next
 - `[T50]` `unclaimed` — **Dark-mode + mobile visual review of the CodeMirror

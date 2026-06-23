@@ -1,3 +1,4 @@
+import { after } from "next/server";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -8,6 +9,7 @@ import {
   updateAnswer,
 } from "@/lib/answers";
 import { AuthError, requireAuthorizedUser } from "@/lib/auth";
+import { syncDrive } from "@/lib/drive";
 
 export const runtime = "nodejs";
 
@@ -65,6 +67,7 @@ export async function DELETE(
       return NextResponse.json({ error: "Answer not found." }, { status: 404 });
     }
 
+    after(() => syncDrive(user.uid).catch(console.error));
     return NextResponse.json({ ok: true });
   } catch (error) {
     if (error instanceof AuthError) {
@@ -105,6 +108,7 @@ export async function PUT(
       return NextResponse.json({ error: "Answer not found." }, { status: 404 });
     }
 
+    after(() => syncDrive(user.uid).catch(console.error));
     return NextResponse.json({ answer });
   } catch (error) {
     if (error instanceof AuthError) {
@@ -143,6 +147,7 @@ export async function PATCH(
       return NextResponse.json({ error: "Answer not found." }, { status: 404 });
     }
 
+    after(() => syncDrive(user.uid).catch(console.error));
     return NextResponse.json({ answer });
   } catch (error) {
     if (error instanceof AuthError) {

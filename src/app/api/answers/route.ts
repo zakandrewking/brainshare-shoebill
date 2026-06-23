@@ -5,6 +5,7 @@ import { z } from "zod";
 import { createAnswerGenerating, listAnswers } from "@/lib/answers";
 import { AuthError, requireAuthorizedUser } from "@/lib/auth";
 import { getGenerationConfig } from "@/lib/ai";
+import { syncDrive } from "@/lib/drive";
 import { runBackgroundGeneration } from "@/lib/generation";
 
 export const runtime = "nodejs";
@@ -57,6 +58,7 @@ export async function POST(request: Request) {
         userId: user.uid,
         question,
       });
+      await syncDrive(user.uid).catch(console.error);
     });
 
     return NextResponse.json({ answer }, { status: 202 });
