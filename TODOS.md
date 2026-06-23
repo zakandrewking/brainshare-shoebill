@@ -17,8 +17,7 @@ confirmation" (shipped + verified, pending the user's check, with a one-line
 
 ## Now
 
-- `[T68]` `wip:claude-sonnet-4-6/ez3v` — **Fix MongoDB connection leak in prod.** (shipped, awaiting deploy confirmation)
-- `[T69]` `wip:claude-sonnet-4-6/ez3v` — **Google Drive auto-export + profile badge.** OAuth2 flow to store refresh token; background sync exports all answers to a single markdown file in Drive; profile avatar gets a small colored dot: absent = not set up, red = token broken, orange = needs sync, green = all synced.
+_(claim the next item in Next/Ideas)_
 
 ## Next
 - `[T50]` `unclaimed` — **Dark-mode + mobile visual review of the CodeMirror
@@ -31,6 +30,9 @@ confirmation" (shipped + verified, pending the user's check, with a one-line
 
 _(Shipped + verified + deployed; pending the user's check. Confirming moves an
 item to Recently shipped; a problem report moves it back to Now.)_
+
+- `[T68]` MongoDB connection fix — **CHECK:** watch Vercel logs / Atlas connection graph after deploy; connection count should stabilize instead of climbing.
+- `[T69]` Google Drive export + profile badge — **SETUP REQUIRED before checking:** (1) Create a Google Cloud project, enable Google Drive API, create OAuth 2.0 credentials (web app type), add `https://www.brainshare.io/api/drive/callback` as an authorized redirect URI. (2) Add `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` to Vercel Production env vars and redeploy. (3) **CHECK:** click your avatar in the app — a dialog should appear; "Connect Google Drive" sends you through OAuth and creates `Brainshare Answers.md` in your Drive. Badge turns green once synced.
 
 - `[T67]` Now only ONE suggestion shows, as a hint in the main input (refines
   T66 per user). The single pooled suggestion is the question box's
